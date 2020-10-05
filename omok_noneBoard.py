@@ -14,9 +14,9 @@ def print_board(size, board):
             print(n, end="")
         m = 1
         for x in y:
-            if x == 1:
+            if x == -1:
                 print("⚫", end="")
-            elif x == 6:
+            elif x == 1:
                 print("⚪", end="")
             elif ((size>=13)&((m==4)|(m==10)|(m==16))&((n==4)|(n==10)|(n==16))) | ((size==9)&((((m==3)|(m==7))&((n==3)|(n==7)))|((m==5)&(n==5)))) | ((size==13)&(m==7)&(n==7)):
                 print("🔶", end="")
@@ -150,30 +150,38 @@ def paly_omok(size):
             index[0], index[1] = index[0]-1, size-index[1]
             if index[0] == -1 or index[1] == -1: raise
             index.reverse()
-            if board[index[0], index[1]] == 1 or board[index[0], index[1]] == 6:
+            if board[index[0], index[1]] == -1 or board[index[0], index[1]] == 1:
                 print("돌이 그 자리에 이미 놓임\n")
                 continue
 
             if who_turn == -1:
                 board[index[0], index[1]] = -1  # 흑돌 두기
 
-                # if is_three_three(): # 3-3이면 무르고 다시
-                #     print("흑은 삼삼에 둘 수 없음") 
-                #     board[x_1][y_1] = 0  ### 돌을 두어보기도 전에 삼삼을 검사함 ###
-                #     continue
-                # elif is_four_four(): # 4-4여도 무르고 다시
-                #     print("흑은 사사에 둘 수 없음")
-                #     board[x_1][y_1] = 0
-                #     continue
 
-                if isFive(who_turn, size, board, index[0], index[1]) == -1:
+                five = isFive(who_turn, size, board, index[0], index[1])
+                if five == True:
                     print_board(size, board)
                     print("💥 흑 승리!! 💥\n")
                     break
+                else:
+                    if five == None:
+                        print_board(size, board)
+                        print("흑은 장목을 두면 반칙패")
+                        print("💥 백 승리!! 💥\n")
+                        break
+
+                    # elif is_three_three(): # 3-3이면 무르고 다시
+                    #     print("흑은 삼삼에 둘 수 없음") 
+                    #     board[x_1][y_1] = 0  ### 돌을 두어보기도 전에 삼삼을 검사함 ###
+                    #     continue
+                    # elif is_four_four(): # 4-4여도 무르고 다시
+                    #     print("흑은 사사에 둘 수 없음")
+                    #     board[x_1][y_1] = 0
+                    #     continue
             else:
                 board[index[0], index[1]] = 1  # 백돌 두기
 
-                if isFive(who_turn, size, board, index[0], index[1]) == 1:
+                if isFive(who_turn, size, board, index[0], index[1]) == True:
                     print_board(size, board)
                     print("💥 백 승리!! 💥\n")
                     break

@@ -250,9 +250,11 @@ while not exit:
                     # 금수 확인
                     else:
                         if five == None:
-                            print("흑은 장목 인정 안됨")
+                            print("흑은 장목을 두면 반칙패")
+                            game_end=True
+                            black_win=False
                         
-                        # if is_three_three(): # 3-3이면 무르고 다시
+                        # elif is_three_three(): # 3-3이면 무르고 다시
                         #     print("흑은 삼삼에 둘 수 없음")
                         #     board[x_1][y_1] = 0
                         #     continue
