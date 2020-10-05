@@ -1,12 +1,15 @@
+#: 설명, ##: 참고 코드 ###: 실수 체크
+
 import numpy as np
 import pygame
 
 
+# 바둑판 콘솔창에 출력
 def print_board(size, board):
     n = size
     for y in board:
         if n <= 9:
-            print(" " + str(n), end="") ## 띄어쓰기를 먼저 해서 자릿수 위치 맞추기, 이전 코드: print(n, end=" ")
+            print(" " + str(n), end="") ## print(n, end=" ") 띄어쓰기를 먼저 해서 자릿수 위치 맞추기 
         else:
             print(n, end="")
         m = 1
@@ -16,7 +19,7 @@ def print_board(size, board):
             elif x == 6:
                 print("⚪", end="")
             elif ((size>=13)&((m==4)|(m==10)|(m==16))&((n==4)|(n==10)|(n==16))) | ((size==9)&((((m==3)|(m==7))&((n==3)|(n==7)))|((m==5)&(n==5)))) | ((size==13)&(m==7)&(n==7)):
-                print("🟡", end="")
+                print("🔶", end="")
             else:
                 print("🟤", end="")
             m += 1
@@ -30,87 +33,106 @@ def print_board(size, board):
         print("   1 2 3 4 5 6 7 8 9\n")
 
 
-def is_five(value, size, board):  # 승리 판정
+# 5줄 판정
+def isFive(who_turn, size, board, x, y):
+    
+    # ㅡ 가로로 이어진 돌 수
+    num1 = 1
+    for x_l in range(x-1, x-6, -1): ### x -> x-1 ### 
+        if (x_l == -1): break
+        if board[y, x_l] == who_turn: ## print(x_l) ### 1 -> l ###
+            num1 += 1
+        else:
+            break
+    for x_r in range(x+1, x+6, +1): ### x -> x+1 ###
+        if (x_r == size): break
+        if board[y, x_r] == who_turn:
+            num1 += 1
+        else:
+            break
+    if num1 == 5:
+        return True
 
-    for y in range(size):  # 가로 5줄
-        for x in range(size - 4):
-            line = board[y, x:x+5]
-            if line.sum() == value * 5:
-                return value
-        
-    for y in range(size - 4):  # 세로 5줄
-        for x in range(size):
-            line = board[y:y+5, x]
-            if line.sum() == value * 5:
-                return value
+    # ㅣ 세로로 이어진 돌 수
+    num2 = 1
+    for y_u in range(y-1, y-6, -1):  ### x-5 -> x-6(장목 검사) -> y-6 (복붙 주의)###
+        if (y_u == -1): break
+        if board[y_u, x] == who_turn:
+            num2 += 1
+        else:
+            break
+    for y_d in range(y+1, y+6, +1):
+        if (y_d == size): break
+        if board[y_d, x] == who_turn:
+            num2 += 1
+        else:
+            break
+    if num2 == 5:
+        return True
 
-    for y in range(size - 4):  # 대각선 \ or / 5줄
-        for x in range(size - 4):
-            line[0] = board[y, x]
-            line[1] = board[y+1, x+1]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+3]
-            line[4] = board[y+4, x+4]
-            if line.sum() == value * 5:
-                return value
-            line[0], line[1], line[2], line[3], line[4] = 0,0,0,0,0 ### 실수 : 초기화 필요 ###
+    # \ 대각선으로 이어진 돌 수 
+    num3 = 1
+    x_l = x
+    y_u = y ### y -> x ###
+    for i in range(5):
+        if (x_l-1 == -1) or (y_u-1 == -1): break ### or -> and ### while 안에 있었을 때 
+        x_l -= 1
+        y_u -= 1
+        if board[y_u, x_l] == who_turn:
+            num3 += 1
+        else: 
+            break
+    x_r = x
+    y_d = y
+    for i in range(5):
+        if (x_r+1 == size) or (y_d+1 == size): break ### != -> == ### while을 나오면서
+        x_r += 1
+        y_d += 1
+        if board[y_d, x_r] == who_turn:
+            num3 += 1
+        else:
+            break
+    if num3 == 5:
+        return True
 
-            line[0] = board[y, x+4]
-            line[1] = board[y+1, x+3]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+1]
-            line[4] = board[y+4, x]
-            if line.sum() == value * 5:
-                return value
-            line[0], line[1], line[2], line[3], line[4] = 0,0,0,0,0 ###
-
-
-def is_samsam(size, board):  # 삼삼 검사
-    three = 0
-
-    for y in range(size):  # 방해 없이 가로 3줄
-        for x in range(size - 4):
-            line = board[y, x:x+5]
-            if line.sum() == 3:
-                three += 1;
-                break;
-
-    for y in range(size - 4):  # 방해 없이 세로 3줄
-        for x in range(size):
-            line = board[y:y+5, x]
-            if line.sum() == 3:
-                three += 1;
-                if three >= 2: return True
-                break;
-
-    for y in range(size - 4):  # 방해 없이 대각선 \ or / 3줄
-        for x in range(size - 4):
-            line[0] = board[y, x]
-            line[1] = board[y+1, x+1]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+3]
-            line[4] = board[y+4, x+4]
-            if line.sum() == 3:
-                three += 1
-                if three >= 2: return True
-            line[0], line[1], line[2], line[3], line[4] = 0,0,0,0,0 ###
-
-            line[0] = board[y, x+4]
-            line[1] = board[y+1, x+3]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+1]
-            line[4] = board[y+4, x]
-            if line.sum() == 3:
-                three += 1
-                if three >= 2: return True
-            line[0], line[1], line[2], line[3], line[4] = 0,0,0,0,0 ###
-
-    return False
+    # / 대각선으로 이어진 돌 수
+    num4 = 1
+    x_l = x
+    y_d = y
+    for i in range(5):
+        if (x_l-1 == -1) or (y_d+1 == size): break
+        x_l -= 1
+        y_d += 1
+        if board[y_d, x_l] == who_turn:
+            num4 += 1
+        else:
+            break
+    x_r = x
+    y_u = y
+    for i in range(5):
+        if (x_r+1 == size) or (y_u-1 == -1): break
+        x_r += 1
+        y_u -= 1
+        if board[y_u, x_r] == who_turn:
+            num4 += 1
+        else:
+            break
+    if num4 == 5:
+        return True
+    
+    if num1 > 5 or num2 > 5 or num3 > 5 or num4 > 5:
+        if who_turn == 1:
+            return True
+        else:
+            return None
+    else:
+        return False
 
 
-def omok(size):  # play
+def paly_omok(size):
 
     board = np.zeros([size, size])
+    who_turn = -1
     turn = 1
     max_turn = size ** 2
     print()
@@ -119,7 +141,7 @@ def omok(size):  # play
     print("게임 시작!")
     while True:
         try:
-            if turn % 2 == 1:
+            if who_turn == -1:
                 index = input("⚫ 흑돌 차례 : ")
             else:
                 index = input("⚪ 백돌 차례 : ")
@@ -132,28 +154,32 @@ def omok(size):  # play
                 print("돌이 그 자리에 이미 놓임\n")
                 continue
 
-            if turn % 2 == 1:
-                board[index[0], index[1]] = 1  # 흑돌 두기
+            if who_turn == -1:
+                board[index[0], index[1]] = -1  # 흑돌 두기
 
-                if is_samsam(size, board):
-                    print("흑은 삼삼에 둘 수 없음")
-                    board[index[0], index[1]] = 0 ### 실수 : 돌을 두어보기도 전에 삼삼을 검사함 ###
-                    continue
+                # if is_three_three(): # 3-3이면 무르고 다시
+                #     print("흑은 삼삼에 둘 수 없음") 
+                #     board[x_1][y_1] = 0  ### 돌을 두어보기도 전에 삼삼을 검사함 ###
+                #     continue
+                # elif is_four_four(): # 4-4여도 무르고 다시
+                #     print("흑은 사사에 둘 수 없음")
+                #     board[x_1][y_1] = 0
+                #     continue
 
-                if is_five(1, size, board) == 1:
+                if isFive(who_turn, size, board, index[0], index[1]) == -1:
                     print_board(size, board)
                     print("💥 흑 승리!! 💥\n")
                     break
             else:
-                board[index[0], index[1]] = 6  # 백돌 두기
+                board[index[0], index[1]] = 1  # 백돌 두기
 
-                if is_five(6, size, board) == 6:
+                if isFive(who_turn, size, board, index[0], index[1]) == 1:
                     print_board(size, board)
                     print("💥 백 승리!! 💥\n")
                     break
 
-            print_board(size, board)
-            # print(board)
+            print_board(size, board) ## print(board)
+            who_turn *= -1
             turn += 1
             if turn > max_turn:
                 print("둘 수 있는 곳이 없음, 무승부!\n")
@@ -168,8 +194,12 @@ def omok(size):  # play
 
 
 print("\n나랑 같이...오목 할래?")
-print("\nbreak : 나가기")
+print("띄어쓰기로 가로 세로 구분 ex) 5 7 : 가로5 세로7에 두기")
+print("break : 나가기\n")
+
 while True:
+
+    # 바둑판 크기 정하기
     try:
         size = input("바둑판 크기 : ")
         size = int(size)
@@ -179,7 +209,11 @@ while True:
             if size == "break": break
             print("잘못된 값")
             continue
-    omok(size)
+
+    # 게임 진행
+    paly_omok(size)
+
+    # 게임을 다시 시작할 건지 묻기
     if input("한판 더(1)/그만(other): ") != "1":
         break
 
