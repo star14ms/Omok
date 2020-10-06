@@ -1,4 +1,4 @@
-# 렌주룰 (#: 설명 or 안 쓰는 코드, ##: 참고 코드 ###: 실수 체크)
+# 미완성 (#: 설명 or 안 쓰는 코드, ##: 참고 코드 ###: 실수 체크)
 
 import numpy as np
 import pygame
@@ -33,18 +33,18 @@ def print_board(size, board):
         print("   1 2 3 4 5 6 7 8 9\n")
 
 
-# 5줄 판정
+# 5목, 6목 판정
 def isFive(who_turn, size, board, x, y):
-    
+
     # ㅡ 가로로 이어진 돌 수
-    num1 = 1
-    for x_l in range(x-1, x-6, -1): ### x -> x-1 ### 
+    num1 = 1 # 방금 둔 1개부터 세기 시작
+    for x_l in range(x-1, x-6, -1): ### x -> x-1 # 6목도 감지하기 위해 (x-6)+1까지 셈
         if (x_l == -1): break
-        if board[y, x_l] == who_turn: ## print(x_l) ### 1 -> l ###
+        if board[y, x_l] == who_turn: ## print(x_l) ### 1 -> l
             num1 += 1
         else:
             break
-    for x_r in range(x+1, x+6, +1): ### x -> x+1 ###
+    for x_r in range(x+1, x+6, +1): ### x -> x+1
         if (x_r == size): break
         if board[y, x_r] == who_turn:
             num1 += 1
@@ -55,7 +55,7 @@ def isFive(who_turn, size, board, x, y):
 
     # ㅣ 세로로 이어진 돌 수
     num2 = 1
-    for y_u in range(y-1, y-6, -1):  ### x-5 -> x-6(장목 검사) -> y-6 (복붙 주의)###
+    for y_u in range(y-1, y-6, -1):  ### x-5 -> x-6(장목 검사) -> y-6 (복붙 주의)
         if (y_u == -1): break
         if board[y_u, x] == who_turn:
             num2 += 1
@@ -73,9 +73,9 @@ def isFive(who_turn, size, board, x, y):
     # \ 대각선으로 이어진 돌 수 
     num3 = 1
     x_l = x
-    y_u = y ### y -> x ###
+    y_u = y ### x -> y
     for i in range(5):
-        if (x_l-1 == -1) or (y_u-1 == -1): break ### or -> and ### while 안에 있었을 때 
+        if (x_l-1 == -1) or (y_u-1 == -1): break ### or -> and (while 안에 있었을 때)
         x_l -= 1
         y_u -= 1
         if board[y_u, x_l] == who_turn:
@@ -85,7 +85,7 @@ def isFive(who_turn, size, board, x, y):
     x_r = x
     y_d = y
     for i in range(5):
-        if (x_r+1 == size) or (y_d+1 == size): break ### != -> == ### while을 나오면서
+        if (x_r+1 == size) or (y_d+1 == size): break ### != -> == (while을 나오면서)
         x_r += 1
         y_d += 1
         if board[y_d, x_r] == who_turn:
@@ -124,7 +124,7 @@ def isFive(who_turn, size, board, x, y):
         if who_turn == 1:
             return True
         else:
-            return None
+            return None # 흑 6목 감지
     else:
         return False
 
@@ -166,10 +166,9 @@ def paly_omok(size):
                 else:
                     if five == None:
                         print_board(size, board)
-                        print("흑은 장목을 두면 반칙패")
-                        print("💥 백 승리!! 💥\n")
-                        break
-
+                        print("흑은 장목에 둘 수 없음")
+                        board[x_1][y_1] = 0
+                        continue
                     # elif is_three_three(): # 3-3이면 무르고 다시
                     #     print("흑은 삼삼에 둘 수 없음") 
                     #     board[x_1][y_1] = 0  ### 돌을 두어보기도 전에 삼삼을 검사함 ###
