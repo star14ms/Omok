@@ -101,50 +101,50 @@ def isFive(who_turn, size, board, x, y):
 
 ################################################################ pygame
 
+pygame.init()
 window_length=250*3
 window_high=250*3
 window_num=0
-pygame.init()
 screen=pygame.display.set_mode((window_length,window_high))
 pygame.display.set_caption("오목!")
 
-my_img=pygame.image.load("omok\game_board.png")
+my_img=pygame.image.load("img\game_board.png")
 my_img=pygame.transform.scale(my_img,(window_high,window_high))
 
-win_black=pygame.image.load("omok\win_black.png")
+win_black=pygame.image.load("img\win_black.png")
 win_black=pygame.transform.scale(win_black,(int(300*2.5),300))
 
-win_white=pygame.image.load("omok\win_white.png")
+win_white=pygame.image.load("img\win_white.png")
 win_white=pygame.transform.scale(win_white,(int(300*2.5),300))
 
-select=pygame.image.load("omok\select2.png")
+select=pygame.image.load("img\select2.png")
 select=pygame.transform.scale(select,(int(45*5/6),int(45*5/6)))
 
-last_sign1=pygame.image.load("omok\last_sign1.png")
+last_sign1=pygame.image.load("img\last_sign1.png")
 last_sign1=pygame.transform.scale(last_sign1,(int(45*5/6),int(45*5/6)))
 
-last_sign2=pygame.image.load("omok\last_sign2.png")
+last_sign2=pygame.image.load("img\last_sign2.png")
 last_sign2=pygame.transform.scale(last_sign2,(int(45*5/6),int(45*5/6)))
 
-stone_b=pygame.image.load("omok\wblack_stone.png")
+stone_b=pygame.image.load("img\wblack_stone.png")
 stone_b=pygame.transform.scale(stone_b,(int(45*5/6),int(45*5/6)))
 
-stone_w=pygame.image.load("omok\white_stone.png")
+stone_w=pygame.image.load("img\white_stone.png")
 stone_w=pygame.transform.scale(stone_w,(int(45*5/6),int(45*5/6)))
 
 my_rect1 = pygame.Rect(0,0,window_num,window_high)
 your_rect1 =  pygame.Rect(window_length-window_num,0,window_length,window_high)
 
-play_button=pygame.image.load("omok\play_button.png")
+play_button=pygame.image.load("img\play_button.png")
 play_button=pygame.transform.scale(play_button,(250*2+14,250*1))
 
-play_button2=pygame.image.load("omok\play_button2.png")
+play_button2=pygame.image.load("img\play_button2.png")
 play_button2=pygame.transform.scale(play_button2,(250*2,250*1))
 
-selected_button=pygame.image.load("omok\selected_button.png")
+selected_button=pygame.image.load("img\selected_button.png")
 selected_button=pygame.transform.scale(selected_button,(250*2+14,250*1))
 
-selected_button2=pygame.image.load("omok\selected_button2.png")
+selected_button2=pygame.image.load("img\selected_button2.png")
 selected_button2=pygame.transform.scale(selected_button2,(250*2,250*1))
 # pygame.font.init()
 myfont = pygame.font.SysFont('Arial', 80)
@@ -164,15 +164,31 @@ def last_stone(board):
 size=15
 exit=False
 
+# start_sound = pygame.mixer.Sound('omok\바둑알+떨어지는+소리.aac')
+
+sound1 = pygame.mixer.Sound("sound\one.wav")
+sound2 = pygame.mixer.Sound("sound\othree.wav")
+sound3 = pygame.mixer.Sound("sound\바둑알 놓기.wav")
+sound4 = pygame.mixer.Sound("sound\바둑알 꺼내기.wav")
+
+lose_sound = pygame.mixer.Sound("sound\[효과음]BOING.wav")
+# pygame.mixer.Sound.play(sound2)
+# pygame.mixer.Sound.play(sound3)
+
 while not exit:
     
+    pygame.mixer.music.stop()
+    pygame.mixer.music.load('bgm\딥마인드챌린지 알파고 경기 시작전 브금1.wav')
+    pygame.mixer.music.play(-1)
+    pygame.mixer.Sound.play(sound2)
+
     who_turn = -1
     turn = 0
     max_turn = size ** 2
 
     black_win=False
+    game_over=False
     game_end=False
-    game_finish=False
     check=0
     y=375-18.75
     x=625-18-250
@@ -189,7 +205,7 @@ while not exit:
     screen.blit(select,(x,y))
     pygame.display.update()
 
-    while not game_finish:
+    while not game_end:
         screen.fill(0)
         screen.blit(my_img,(window_num,0))
 
@@ -198,7 +214,7 @@ while not exit:
             # 창 닫기(X) 버튼
             if event.type==pygame.QUIT:
                 exit=True
-                game_finish=True
+                game_end=True
             
             # 키보드를 누르고 땔 때
             if event.type == pygame.KEYDOWN:
@@ -222,9 +238,10 @@ while not exit:
                         x_1 -= 1
 
                 # enter 키
-                elif event.key == pygame.K_RETURN and game_end ==True: 
-                        game_finish=True
-                elif event.key == pygame.K_RETURN and game_end ==False: 
+                elif event.key == pygame.K_RETURN and game_over ==True: 
+                        game_end=True
+                        game_over=False
+                elif event.key == pygame.K_RETURN and game_over ==False: 
 
                     # 이미 돌이 놓여 있으면 다시
                     if board[y_1][x_1] == -1 or board[y_1][x_1] == 1: 
@@ -238,21 +255,29 @@ while not exit:
                         board[y_1][x_1] = 1
                     
                     five = isFive(who_turn, size, board, x_1, y_1)
-
+                    
                     # 오목이 생겼으면 육목 검사하고 게임 종료 신호 키기
                     if five == True:
-                        game_end=True
+                        pygame.mixer.Sound.play(sound1)
+                        last_stone_xy = [y_1,x_1]
+                        game_over=True
                         if who_turn == -1:
                             black_win=True
+                            pygame.mixer.music.load('bgm\알파고 쉣낏 경기 줘까치 하네.wav')
+                            pygame.mixer.music.play(-1)
                         else:
                             black_win=False
-
+                            pygame.mixer.music.stop()
+                            pygame.mixer.Sound.play(lose_sound)
+                            
                     # 금수 확인
                     else:
                         if five == None:
                             print("흑은 장목을 두면 반칙패")
-                            game_end=True
+                            game_over=True
                             black_win=False
+                            pygame.mixer.music.stop()
+                            pygame.mixer.Sound.play(lose_sound)
                         
                         # elif is_three_three(): # 3-3이면 무르고 다시
                         #     print("흑은 삼삼에 둘 수 없음")
@@ -263,6 +288,8 @@ while not exit:
                         #     board[x_1][y_1] = 0
                         #     continue
 
+                        pygame.mixer.Sound.play(sound3)
+            
                         # 돌이 가득 차면 바둑판 초기화
                         if turn > max_turn: 
                             who_turn *= -1
@@ -286,18 +313,23 @@ while not exit:
                     board = np.zeros([size, size])
                 elif event.key == pygame.K_F10: # 창 닫기
                     exit=True
-                    game_finish=True
+                    game_end=True
 
                 # 화면 업데이트
-                screen.blit(select,(x,y))
-                make_board(board)
-                last_stone([last_stone_xy[1],last_stone_xy[0]])
+                if exit==False:
+                    screen.blit(select,(x,y))
+                    make_board(board)
+                        
+                    last_stone([last_stone_xy[1],last_stone_xy[0]])
 
                 # 게임 종료
-                if game_end:
+                if game_over:
                     if black_win==True: # 흑 승
                         screen.blit(win_black,(0,250))
                     elif black_win==False: # 백 승
                         screen.blit(win_white,(0,250))
-                
+
                 pygame.display.update()
+
+print("\nGood Bye")
+pygame.quit()
