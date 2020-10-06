@@ -10,7 +10,7 @@ def isFive(who_turn, size, board, x, y):
 
     # ㅡ 가로로 이어진 돌 수
     num1 = 1 # 방금 둔 1개부터 세기 시작
-    for x_l in range(x-1, x-6, -1): ### x -> x-1 # 6목도 감지하기 위해 (x-6)+1까지 셈 
+    for x_l in range(x-1, x-6, -1): ### x -> x-1 # 6목도 감지하기 위해 (x-6)+1까지 셈
         if (x_l == -1): break
         if board[y, x_l] == who_turn: ## print(x_l) ### 1 -> l
             num1 += 1
@@ -24,7 +24,7 @@ def isFive(who_turn, size, board, x, y):
             break
     if num1 == 5:
         return True
-        
+
     # ㅣ 세로로 이어진 돌 수
     num2 = 1
     for y_u in range(y-1, y-6, -1):  ### x-5 -> x-6(장목 검사) -> y-6 (복붙 주의)
