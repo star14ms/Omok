@@ -1,4 +1,4 @@
-#: 설명, ##: 참고 코드 ###: 실수 체크
+# 렌주룰 (#: 설명 or 안 쓰는 코드, ##: 참고 코드 ###: 실수 체크)
 
 import numpy as np
 import pygame
