@@ -259,11 +259,11 @@ while not exit:
                         game_over=True
                         if who_turn == -1:
                             black_win=True
-                            pygame.mixer.music.load('bgm\알파고 쉣낏 경기 줘까치 하네.wav')
-                            pygame.mixer.music.play(-1)
+                            # pygame.mixer.music.load('bgm\알파고 쉣낏.wav')
+                            # pygame.mixer.music.play(-1)
                         else:
                             black_win=False
-                            pygame.mixer.Sound.play(lose_sound)
+                            # pygame.mixer.Sound.play(lose_sound)
                             
                     # 금수 확인
                     else:
