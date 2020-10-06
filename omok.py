@@ -164,16 +164,11 @@ def last_stone(board):
 size=15
 exit=False
 
-# start_sound = pygame.mixer.Sound('omok\바둑알+떨어지는+소리.aac')
-
-sound1 = pygame.mixer.Sound("sound\one.wav")
+sound1 = pygame.mixer.Sound("sound\피싱.wav")
 sound2 = pygame.mixer.Sound("sound\othree.wav")
 sound3 = pygame.mixer.Sound("sound\바둑알 놓기.wav")
 sound4 = pygame.mixer.Sound("sound\바둑알 꺼내기.wav")
-
 lose_sound = pygame.mixer.Sound("sound\[효과음]BOING.wav")
-# pygame.mixer.Sound.play(sound2)
-# pygame.mixer.Sound.play(sound3)
 
 while not exit:
     
@@ -258,6 +253,7 @@ while not exit:
                     
                     # 오목이 생겼으면 육목 검사하고 게임 종료 신호 키기
                     if five == True:
+                        pygame.mixer.music.stop()
                         pygame.mixer.Sound.play(sound1)
                         last_stone_xy = [y_1,x_1]
                         game_over=True
@@ -267,7 +263,6 @@ while not exit:
                             pygame.mixer.music.play(-1)
                         else:
                             black_win=False
-                            pygame.mixer.music.stop()
                             pygame.mixer.Sound.play(lose_sound)
                             
                     # 금수 확인
