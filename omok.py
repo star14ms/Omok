@@ -392,55 +392,53 @@ def canFour(who_turn, size, board):
         canFour_xy_list.append(None)
     return canFour_xy_list
 
-num_round = 1 # 연결 기대점수 소수 n째 자리까지 반올림
+num_round = 1 # 연결 기대점수 정확도 (소수 n째 자리까지 반올림)
 
 # 각 좌표의 연결 기대점수를 계산하여 보드로 만들기
-def win_value_board(who_turn, size, board):
+def win_value_board(size, board):
     
     value_board = np.zeros([size, size])
-    focus_value = 0
     
     # 기대점수 계산 인자 (좌표 주변의 상태)
     start_value = 1 # 초기 점수
     next_to_value = 2 # 주변 돌의 영향력 ⚪⚪
-    blank_value = 1.8 # 주변 돌 사이 공백의 영향력 ⚪🟡⚪
-    blank_bfcls_value = 2 # 주변 돌 너머 막히기 전까지 공백의 영향력 ⚪🟡⚪🟡⚫
+    blank_value = 1.5 # 주변 돌까지의 공백의 영향력 ⚪🟡⚪
+    blank_bfcls_value = 2 # 주변 돌 너머 막히기 전까지 공백의 영향력 ⚪🟡⚪🟡⚫ # bfcls : blank before close
     #** 추가 필요 : 주변 돌이 아군인지 적군인지
     
     for focus_y in range(size):
         for focus_x in range(size):
             
-            # 흑 턴이고 금수 자리면 -1점
-            if who_turn == 1: 
-                if num_Four(who_turn, size, board, focus_x, focus_y) >= 2: 
-                    value_board[focus_y, focus_x] = -1
-                    continue
-                if num_Three(who_turn, size, board, focus_x, focus_y) >= 2: 
-                    value_board[focus_y, focus_x] = -1
-                    continue
-                if isFive(who_turn, size, board, focus_x, focus_y) == None: 
-                    value_board[focus_y, focus_x] = -1
-                    continue
-            
             # 자리가 비어있을 때만 계산하고 채워져있으면 0점
             if board[focus_y, focus_x] == 0:
                 
-                value = 0
+                # # 금수 자리면 -1점
+                # if num_Four(1, size, board, focus_x, focus_y) >= 2:
+                #     value_board[focus_y, focus_x] = -1
+                #     continue
+                # if num_Three(1, size, board, focus_x, focus_y) >= 2:
+                #     value_board[focus_y, focus_x] = -1
+                #     continue
+                # if isFive(1, size, board, focus_x, focus_y) == None: 
+                #     value_board[focus_y, focus_x] = -1
+                #     continue
+                
+                value = 0 # 가로, 세로, 양 대각선 기대점수의 총합
                 
                 # 가로 ㅡ쪽 점수
                 horizontal_value = start_value
                 
-                blank1, blank2 = 0, 0
-                next_to_color = None
-                blank_before_close1, blank_before_close2 = 0, 0
-                close1, close2 = False, False # 닫힌 개수
-                for i in range(1, 5):
+                blank1, blank2 = 0, 0 # 처음 만난 돌까지의 공백 수 (좌우 각각)
+                next_to_color = None # 처음 만난 색깔 (좌1, 우1, 좌2, 우2,...)
+                blank_before_close1, blank_before_close2 = 0, 0 # 처음 만난 돌 색깔 기준 그 너머 상대 색깔로 막힌 곳까지의 공백 (좌우 각각)
+                close1, close2 = False, False # 좌우 막혔는지 여부
+                for i in range(1, 5):# 좌우 4칸 감지
                     if (focus_x-i > -1):
                         if next_to_color == None and board[focus_y, focus_x-i] != 0:
                             next_to_color = board[focus_y, focus_x-i]
                         
                         if board[focus_y, focus_x-i] == 0:
-                            if next_to_color == None: # 밑 코드에서 오류남 -> 모두 elif로 바꿈 -> 그 아래코드로 못 감 -> if 하나를 통과시킴
+                            if next_to_color == None: # 밑 코드에서 오류 -> 모두 elif로 -> 그 아래코드로 못 감 -> 0일때 조건문 안에서(근본)
                                 blank1 += 1 # 돌이 멀리 떨어져 있을수록 기대점수가 줄음
                             else:
                                 blank_before_close1 += 1
@@ -470,10 +468,10 @@ def win_value_board(who_turn, size, board):
                         if next_to_color == None:
                             blank_before_close2 = blank2
                         close2 = True
-
+                
                 if close1: horizontal_value -= (horizontal_value/2/(blank_bfcls_value**blank_before_close1)) ### (()
                 if close2: horizontal_value -= (horizontal_value/2/(blank_bfcls_value**blank_before_close2))
-                # if focus_x == 7 and focus_y == 7: print(horizontal_value)
+                
                 # 세로 ㅣ쪽 점수
                 vertical_value = start_value
                 
@@ -616,16 +614,16 @@ def win_value_board(who_turn, size, board):
                 if close2: diagonal_value2 -= (diagonal_value2/2/(blank_bfcls_value**blank_before_close2))
                 
                 # 각 자리마다 연결 기대점수를 저장
-                value = (horizontal_value + vertical_value + diagonal_value1 + diagonal_value2)
+                value = (horizontal_value * vertical_value * diagonal_value1 * diagonal_value2)
                 value_board[focus_y, focus_x] = round(value, num_round)
                 value = 0 ### 초기화
-
+    
     return value_board
-
+    
 # 제일 높은 연결 기대점수를 가지는 좌표를 줌
 def xy_most_high_value(size, value_board):
     
-    xy_most_high = [] # 기대점수 1위 좌표
+    xy_most_high = [[0, 0]] # 기대점수 1위 좌표(들)
     value_most_high = 0 # 1위 점수
     
     # 바둑판의 모든 좌표를 훑어서 기대점수 1위 좌표 찾기
@@ -637,12 +635,12 @@ def xy_most_high_value(size, value_board):
                 
                 value_most_high = value_board[focus_y, focus_x]
                 xy_most_high = [[focus_x, focus_y]]
-
+            
             # (1위 점수 = 현재 좌표의 점수)일 때
             elif value_most_high == value_board[focus_y, focus_x]:
                 
-                sum_x, sum_y = 0, 0
-                num_stones = 0
+                sum_x, sum_y = 0, 0 # 모든 돌의 x, y좌표값의 합
+                num_stones = 0 # 바둑판에 놓인 돌 개수
                 
                 for focus2_y in range(size): ### focus -> focus2 새로운 변수
                     for focus2_x in range(size):
@@ -650,7 +648,7 @@ def xy_most_high_value(size, value_board):
                             sum_x += focus2_x
                             sum_y += focus2_y
                             num_stones += 1
-                avrg_x, avrg_y = round(sum_x/num_stones), round(sum_y/num_stones)
+                avrg_x, avrg_y = round(sum_x/num_stones, 1), round(sum_y/num_stones, 1) # 전체 바둑돌의 평균 좌표
                 
                 # 포월주형 사라지는거 방지 (초반 화월/포월주형 모두 가능)
                 if num_stones == 1 and value_board[7, 7] == 0:
@@ -658,7 +656,7 @@ def xy_most_high_value(size, value_board):
                 
                 # 현재 좌표가 돌들의 평균 위치에 더 가까우면 현재 좌표를 1위로 (포월주형 사라짐) (2.주변에 돌이 더 많은 쪽)
                 elif (avrg_x-focus_x)**2 + (avrg_y-focus_y)**2 < (avrg_x-xy_most_high[0][0])**2 + (avrg_y-xy_most_high[0][1])**2:
-                    xy_most_high = [[focus_x, focus_y]] 
+                    xy_most_high = [[focus_x, focus_y]]
                 
                 # 평균 좌표까지의 거리가 같으면 현재 좌표를 1위 리스트에 추가 (3.랜덤으로 뽑기)
                 elif (avrg_x-focus_x)**2 + (avrg_y-focus_y)**2 == (avrg_x-xy_most_high[0][0])**2 + (avrg_y-xy_most_high[0][1]):
@@ -801,28 +799,28 @@ exit=False # 프로그램 종료
 while not exit:
     pygame.display.set_caption("오목이 좋아, 볼록이 좋아? 오목!")
     
-    who_turn = 1 # 누구 턴인지 알려줌 (-1: 흑, 1: 백)
+    who_turn = 1 # 누구 턴인지 알려줌 (1: 흑, -1: 백)
     turn = 0
     final_turn = None # 승패가 결정난 턴 (수순 다시보기 할 때 활용)
     max_turn = size * size
-
+    
     game_selected = False # 게임 모드를 선택했나?
     select_AI = True # 게임 모드
-
+    
     game_end = False # 게임 후 수순 다시보기 모드까지 끝났나?
     black_win = None # 흑,백 승패 여부
     game_over = False # 게임이 끝났나?
     game_review = False # 수순 다시보기 모드인가?
-
+    
     record = [] # 기보 기록할 곳
-
+    
     black_foul = False # 금수를 뒀나?
     before_foul = False # 한 수 전에 금수를 뒀나?
     foul_stack = 0 # 연속 금수 횟수
     threethree_foul = False
     fourfour_foul = False
     six_foul = False
-
+    
     x=7 # 커서 좌표
     y=7
     y_win=375-19 ## 18.75 -> 19 # 커서 실제 위치
@@ -833,7 +831,7 @@ while not exit:
     screen.blit(play_button,(125, 100))
     screen.blit(selected_button2,(125, 400))
     pygame.display.update()
-
+    
     print("\n게임 모드 선택")
     while not game_selected:
         for event in pygame.event.get():
@@ -881,7 +879,7 @@ while not exit:
                     screen.blit(board_img,(window_num, 0))
                     screen.blit(select,(x_win,y_win))
                 pygame.display.update()
-
+    
     pygame.mixer.music.play(-1) # -1 : 반복 재생
     
     print("\n게임 시작!")
@@ -898,7 +896,7 @@ while not exit:
             
             # 키보드를 누르고 땔 때
             elif event.type == pygame.KEYDOWN:
-
+                
                 # ↑ ↓ → ← 방향키
                 if event.key == pygame.K_UP: 
                     if not game_review:
@@ -957,7 +955,7 @@ while not exit:
                 elif event.key == pygame.K_ESCAPE: # 창 닫기
                     exit=True
                     game_end=True
-
+                
                 # Enter, Space 키
                 elif event.key == pygame.K_RETURN and game_over: # 게임 종료
                         game_end=True
@@ -1077,7 +1075,7 @@ while not exit:
                         black_4_xys = canFour(1, size, board) # 4.흑 열린4 자리 2곳
                         
                         # 연결 기대점수가 가장 높은 좌표 감지 (우선순위 5위)
-                        value_board = win_value_board(who_turn, size, board)
+                        value_board = win_value_board(size, board)
                         xy_most_high_list = xy_most_high_value(size, value_board) # 5.가장 연결 기대점수가 높은 곳
                         expect_xy = xy_most_high_list[0]
                         
@@ -1094,65 +1092,54 @@ while not exit:
                                 # 열린 3은 4를 만드는 곳이 2곳임
                                 x1, y1 = white_4_xys[0][0], white_4_xys[0][1] ### value_board는 [y, x] 형태
                                 x2, y2 = white_4_xys[1][0], white_4_xys[1][1]
-                                xy1_value = value_board[y1, x1]
-                                xy2_value = value_board[y2, x2]
-                                # 두 곳중 더 높은 기대점수를 가진 곳을 선택
-                                if xy1_value > xy2_value:
+                                if expect_xy == [x1, y1]:
                                     x, y = x1, y1
-                                elif xy1_value < xy2_value:
-                                    x, y = x2, y2
-                                else: # 기대점수가 같으면 중앙에 더 가까운 쪽을 선택
-                                    if (7-x1)**2 + (7-y1)**2 <= (7-x2)**2 + (7-y2)**2: # 중앙으로부터의 거리의 제곱
-                                        x, y = x1, y1
-                                    else:
-                                        x, y = x2, y2
-                        elif black_4_xys[0] != None:
-
-                            if len(black_4_xys) == 1: ### white -> black 복붙
-                                x, y = black_4_xys[0][0], black_4_xys[0][1]
-                            else: 
-                                x1, y1 = black_4_xys[0][0], black_4_xys[0][1]
-                                x2, y2 = black_4_xys[1][0], black_4_xys[1][1]
-                                xy1_value = value_board[y1, x1]
-                                xy2_value = value_board[y2, x2]
-                                
-                                if xy1_value > xy2_value:
-                                    x, y = x1, y1
-                                elif xy1_value < xy2_value:
+                                elif expect_xy == [x2, y2]:
                                     x, y = x2, y2
                                 else:
-                                    if (7-x1)**2 + (7-y1)**2 <= (7-x2)**2 + (7-y2)**2:
-                                        x, y = x1, y1
-                                    else:
-                                        x, y = x2, y2
+                                    x, y = expect_xy[0], expect_xy[1]
+                        elif black_4_xys[0] != None:
+                            
+                            if len(black_4_xys) == 1: ### white -> black 복붙
+                                x, y = black_4_xys[0][0], black_4_xys[0][1]
+                            else:
+                                x1, y1 = black_4_xys[0][0], black_4_xys[0][1]
+                                x2, y2 = black_4_xys[1][0], black_4_xys[1][1]
+                                print(x1, y1, x2, y2)
+                                if expect_xy == [x1, y1]:
+                                    x, y = x1, y1
+                                elif expect_xy == [x2, y2]:
+                                    x, y = x2, y2
+                                else:
+                                    x, y = expect_xy[0], expect_xy[1]
                         else:
                             x, y = expect_xy[0], expect_xy[1]
                         
                         # 연결 기대 점수판, 기대점수 1위, 최종 우선순위 1위 좌표 출력
                         print(value_board, "\n")
-
+                        
                         if len(xy_most_high_list[1]) > 1:
                             print("기대점수 공동 1위:", end=" ")
                             for xy in xy_most_high_list[1]:
                                 print("["+str(xy[0]+1) +", "+ str(xy[1]+1)+"]", end=" ")
                             print("랜덤 뽑기")
-
+                        
                         print("기대점수 1위: x="+str(expect_xy[0]+1) + " y="+str(expect_xy[1]+1), end=", ")
                         print(f"{int(value_board[expect_xy[1], expect_xy[0]])}점")
-
+                        
                         print("우선순위 1위: x="+str(x+1) + " y="+str(y+1), end=", ")
                         print(f"{int(value_board[y, x])}점\n")
-
+                        
                         # 돌 위치 확정
                         board[y][x] = who_turn
-
+                        
                         record.append([y, x, who_turn])
                         last_stone_xy = [y, x]
                         turn += 1
-
+                        
                         x_win = 28 + dis*x # 커서 이동
                         y_win = 27 + dis*y
-
+                        
                         # 오목이 생겼으면 게임 종료 신호 키기
                         if is_n_mok(5, who_turn, size, board) == True:
                             pygame.display.set_caption("나에게 복종하라 인간.")
@@ -1173,7 +1160,7 @@ while not exit:
                             pygame.mixer.Sound.play(lose_sound)
                             if not black_foul:
                                 print("백 승리!")
-
+                
                 # 바둑알, 커서 위치 표시, 마지막 돌 표시 화면에 추가
                 if not exit:
                     make_board(board)
@@ -1181,7 +1168,7 @@ while not exit:
                         screen.blit(select,(x_win,y_win))
                     if turn != 0 or event.key == pygame.K_F2 or event.key == pygame.K_F3:
                         last_stone([last_stone_xy[1],last_stone_xy[0]])
-
+                
                 # 흑,백 승리 이미지 화면에 추가, 수순 다시보기 모드로 전환, 기보 저장
                 if game_over and not game_review:
                     game_review = True
@@ -1197,9 +1184,9 @@ while not exit:
                         for i in range(len(record)):
                             file.write(str(record[i][0]+1)+' '+str(record[i][1]+1)+' '+str(record[i][2])+'\n')
                         file.write("\n")
-
+                
                 # 화면 업데이트
                 pygame.display.update()
-    
+                
 print("\nGood Bye")
 pygame.quit()
