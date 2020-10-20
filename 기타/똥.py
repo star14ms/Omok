@@ -4,7 +4,6 @@
 #         print(x_l, range(x, -1, -1))
 # abc(1, 2, 3, x)
 
-
 # def game_visualize(board_img, ball, position):
 #   ball_size = ball.shape[0]
 #   step_size = 48
