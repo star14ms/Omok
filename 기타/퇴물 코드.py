@@ -285,7 +285,7 @@ def xy_most_high_value(value_board):
     
     return [xy_win, xy_most_high]
 
-# AI가 두기
+# AI 랜덤으로 두기
                         # else: # 우선순위에 속하지 않으면 x, y값 랜덤으로 잡기 (범위: 마지막 돌의 각 좌표의 +-2칸)
                         #     while True:
                         #         x = random.randrange(last_stone_xy[1]-2, last_stone_xy[1]+3)
@@ -311,3 +311,135 @@ def xy_most_high_value(value_board):
                                 #         x, y = x1, y1
                                 #     else:
                                 #         x, y = x2, y2
+
+# 전체 좌표에서 가로나 세로, 대각선으로 4칸 차이나는 두 좌표만 고르기
+    # 만약 3을 3개 이상 감지한다면
+    # if len(canFour_xy_list) > 2:
+    #     for i in range(len(canFour_xy_list)):
+    #         for k in range(i+1, len(canFour_xy_list)):
+    #             # 한 라인의 양쪽인 3만 출력
+    #             if (((canFour_xy_list[i][0]+4 == canFour_xy_list[k][0]) and (canFour_xy_list[i][1] == canFour_xy_list[k][1])) or 
+    #                 ((canFour_xy_list[i][1]+4 == canFour_xy_list[k][1]) and (canFour_xy_list[i][0] == canFour_xy_list[k][0])) or
+    #                 ((canFour_xy_list[i][0]+4 == canFour_xy_list[k][0]) and (canFour_xy_list[i][1]+4 == canFour_xy_list[k][1])) or
+    #                 ((canFour_xy_list[i][0]-4 == canFour_xy_list[k][0]) and (canFour_xy_list[i][1]+4 == canFour_xy_list[k][1]))):
+                    
+    #                 canFour_xy_list = [[canFour_xy_list[i]],[canFour_xy_list[k]]]
+    #                 break
+
+# 오목이 가능한 경우의 수 보드 만들기
+def omok_cases_board(who_turn, size, board, x, y):
+    
+    # ㅡ 가로 4 검사
+    for x_r in range(x-4, x+1, +1):
+        if x_r > -1 and x_r+5 < size:
+            line = board[y, x_r:x_r+6]
+            
+        else:
+            continue
+    
+    # ㅣ 세로 4 검사
+    for y_d in range(y-4, y+1, +1):
+        if y_d > -1 and y_d+5 < size:
+            line = board[y_d:y_d+6, x]
+
+        
+        else:
+            continue
+    
+    line = [0, 0, 0, 0, 0] # 대각선 검사할 때 이용
+    
+    # \ 대각선 4 검사
+    x_r = x-4
+    y_d = y-4
+    for i in range(5):
+        if x_r > -1 and x_r+5 < size and y_d > -1 and y_d+5 < size:
+            for k in range(5):
+                line[k] = board[y_d+k, x_r+k]
+        
+            x_r += 1
+            y_d += 1
+        else:
+            continue
+    
+    # / 대각선 4 검사
+    x_r = x-4
+    y_u = y+4
+    for i in range(5):
+        if x_r > -1 and x_r+5 < size and y_u < size and y_u-5 > -1:
+            for k in range(5):
+                line[k] = board[y_u-k, x_r+k]
+
+            x_r += 1
+            y_u -= 1
+        else:
+            continue
+    
+    return
+
+# 두 좌표 중 주변 8곳의 점수의 합이 더 높은 좌표를 내보냄
+def select_xy_more_potential_valuable(xy1, xy2, value_board):
+    
+    if forbid_xy1 and forbid_xy2: return None
+    xys = [xy1, xy2]
+    sum_value = 0
+    xy1_surrounding_8_value = 0
+    xy2_surrounding_8_value = 0
+    
+    for xy in xys:
+        if xy[0]-1 > -1   and xy[1]-1 > -1:   sum_value += value_board[xy[1]-1, xy[0]-1]
+        if xy[0]          and xy[1]-1 > -1:   sum_value += value_board[xy[1]-1, xy[0]]
+        if xy[0]+1 < size and xy[1]-1 > -1:   sum_value += value_board[xy[1]-1, xy[0]+1]
+        if xy[0]-1 > -1   and xy[1]:          sum_value += value_board[xy[1], xy[0]-1]
+        if xy[0]+1 < size and xy[1]:          sum_value += value_board[xy[1], xy[0]+1]
+        if xy[0]-1 > -1   and xy[1]+1 < size: sum_value += value_board[xy[1]+1, xy[0]-1]
+        if xy[0]          and xy[1]+1 < size: sum_value += value_board[xy[1]+1, xy[0]]
+        if xy[0]+1 < size and xy[1]+1 < size: sum_value += value_board[xy[1]+1, xy[0]-1]
+        
+        if xy == xy1:
+            xy1_surrounding_8_value = sum_value
+        else:
+            xy2_surrounding_8_value = sum_value
+        sum_value = 0 ### 초기화
+    
+    if xy1_surrounding_8_value > xy2_surrounding_8_value and not forbid_xy1:
+        return xy1
+    elif xy1_surrounding_8_value < xy2_surrounding_8_value and not forbid_xy2:
+        return xy2
+    else:
+        return None
+
+# "제일 높은 연결 기대점수를 가지는 좌표를 줌" 코드 정리 전
+                # sum_x, sum_y = 0, 0 # 모든 돌의 x, y좌표값의 합
+                # num_stones = 0 # 바둑판에 놓인 돌 개수
+                
+                # for focus2_y in range(size): ### focus -> focus2 새로운 변수
+                #     for focus2_x in range(size):
+                #         if board[focus2_y, focus2_x] == -1 or board[focus2_y, focus2_x] == 1: 
+                #             sum_x += focus2_x
+                #             sum_y += focus2_y
+                #             num_stones += 1 ### value_board로 돌의 유무를 확인하면 반올림 0이 생겼을 때 돌인줄 알음
+                
+                # if num_stones != 0:
+                #     avrg_x, avrg_y = round(sum_x/num_stones, 1), round(sum_y/num_stones, 1) # 전체 바둑돌의 평균 좌표
+                # else:
+                #     return[[7,7],[[7,7]]]
+                
+                # # 간접주형 사라지는거 방지 (초반 직접/간접주형 모두 가능)
+                # if (num_stones == 1 and value_board[7, 7] == 0): ## or num_stones == 3 (돌 두개 막기)
+                #     xy_most_high.append([focus_x, focus_y])
+                
+                # # 현재 좌표가 돌들의 평균 위치에 더 가까우면 현재 좌표를 1위로 (간접주형 사라짐) (2.주변에 돌이 더 많은 쪽)
+                # elif (avrg_x-focus_x)**2 + (avrg_y-focus_y)**2 < (avrg_x-xy_most_high[0][0])**2 + (avrg_y-xy_most_high[0][1])**2:
+                #     xy_most_high = [[focus_x, focus_y]]
+                
+                # # 평균 좌표까지의 거리가 같으면 중앙에 더 가까운 쪽을 1위로 (3.중앙에 가까운 쪽)
+                # elif (avrg_x-focus_x)**2 + (avrg_y-focus_y)**2 == (avrg_x-xy_most_high[0][0])**2 + (avrg_y-xy_most_high[0][1]):
+                    
+                #     select_xy = select_xy_more_center([focus_x, focus_y], xy_most_high[0], value_board)
+
+                #     if select_xy == [focus_x, focus_y]:
+                #         xy_most_high = [[focus_x, focus_y]]
+                    
+                #     # 중앙까지의 거리가 같으면 현재 좌표를 1위 리스트에 추가 (4.랜덤으로 뽑기)
+                #     elif select_xy == None:
+                #         xy_most_high.append([focus_x, focus_y])
