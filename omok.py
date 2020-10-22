@@ -1,58 +1,61 @@
 # 오목 룰 : 렌주룰 (흑만 3-3, 4-4, 장목(6목 이상) 모두 금지)
 
 # 각주 종류
-# (#: 설명 or 안 쓰거나 수정중인 코드, ##: 참고 코드, ###: 실수한 부분, #++: 개선할 부분, #**: 더 생각할 부분)
+# (#: 설명 or 안 쓰거나 수정중인 코드, ##: 참고 코드, ###: 실수한 부분, #++: 개선할 부분, #**: 나중에 더 생각할 부분)
 
 # 코드를 모두 접고나서, 하나씩 피면서 보는 것을 추천!
-# 코드 순서 (밑의 목록들을 Ctrl + f 로 검색해서 한번에 이동!):
-# 금수 감지 code
-# AI code
-# pygame code
-# main code
 
-import numpy as np
-import pygame
-import random
-from datetime import datetime
-import time
+# 코드 순서 (밑의 목록들을 Ctrl + f 로 검색해서 한번에 이동!):
+#1 금수 감지 code
+#2 AI code
+#3 pygame code
+#4 main code
+
+import numpy as np # 보드 만들기
+import pygame # 게임 화면 만들기
+import random # 점수가 같은 좌표들 중 하나 고르기
+from datetime import datetime # 기보 날짜 기록
 
 ################################################################ 금수 감지 code
 
-# 5목, 장목 판정 (장목: 6목 이상)
-def isFive(whose_turn, size, board, x, y):
+# 5목, 흑 장목 판정 (장목: 6목 이상)
+def isFive(whose_turn, size, board, x, y, placed):
+    if not placed: board[y][x] = whose_turn
 
     # ㅡ 가로로 이어진 돌 수
     num1 = 1 # 방금 둔 1개부터 세기 시작
     for x_l in range(x-1, x-6, -1): ### x -> x-1 # 6목도 감지하기 위해 (x-6)+1까지 셈
         if (x_l == -1): break
-        if board[y, x_l] == whose_turn: ### 1 -> l
+        if board[y][x_l] == whose_turn: ### 1 -> l
             num1 += 1
         else:
             break
     for x_r in range(x+1, x+6, +1): ### x -> x+1
         if (x_r == size): break
-        if board[y, x_r] == whose_turn:
+        if board[y][x_r] == whose_turn:
             num1 += 1
         else:
             break
     if num1 == 5:
+        if not placed: board[y][x] = 0
         return True
 
     # ㅣ 세로로 이어진 돌 수
     num2 = 1
     for y_u in range(y-1, y-6, -1):  ### x-5 -> x-6(장목 검사) -> y-6 (복붙 주의)
         if (y_u == -1): break
-        if board[y_u, x] == whose_turn:
+        if board[y_u][x] == whose_turn:
             num2 += 1
         else:
             break
     for y_d in range(y+1, y+6, +1):
         if (y_d == size): break
-        if board[y_d, x] == whose_turn:
+        if board[y_d][x] == whose_turn:
             num2 += 1
         else:
             break
     if num2 == 5:
+        if not placed: board[y][x] = 0
         return True
 
     # \ 대각선으로 이어진 돌 수 
@@ -63,7 +66,7 @@ def isFive(whose_turn, size, board, x, y):
         if (x_l-1 == -1) or (y_u-1 == -1): break ### or -> and (while 안에 있었을 때)
         x_l -= 1
         y_u -= 1
-        if board[y_u, x_l] == whose_turn:
+        if board[y_u][x_l] == whose_turn:
             num3 += 1
         else: 
             break
@@ -73,11 +76,12 @@ def isFive(whose_turn, size, board, x, y):
         if (x_r+1 == size) or (y_d+1 == size): break ### != -> == (while을 나오면서)
         x_r += 1
         y_d += 1
-        if board[y_d, x_r] == whose_turn:
+        if board[y_d][x_r] == whose_turn:
             num3 += 1
         else:
             break
     if num3 == 5:
+        if not placed: board[y][x] = 0
         return True
 
     # / 대각선으로 이어진 돌 수
@@ -88,7 +92,7 @@ def isFive(whose_turn, size, board, x, y):
         if (x_l-1 == -1) or (y_d+1 == size): break
         x_l -= 1
         y_d += 1
-        if board[y_d, x_l] == whose_turn:
+        if board[y_d][x_l] == whose_turn:
             num4 += 1
         else:
             break
@@ -98,12 +102,15 @@ def isFive(whose_turn, size, board, x, y):
         if (x_r+1 == size) or (y_u-1 == -1): break
         x_r += 1
         y_u -= 1
-        if board[y_u, x_r] == whose_turn:
+        if board[y_u][x_r] == whose_turn:
             num4 += 1
         else:
             break
     if num4 == 5:
+        if not placed: board[y][x] = 0
         return True
+    
+    if not placed: board[y][x] = 0
 
     if num1 > 5 or num2 > 5 or num3 > 5 or num4 > 5:
         if whose_turn == -1: ### 1 -> -1
@@ -113,23 +120,26 @@ def isFive(whose_turn, size, board, x, y):
     else:
         return False
 
-# 4-4 금수 판정
-def num_Four(whose_turn, size, board, x, y):
+# 4 개수 (4: 다음 차례에 5를 만들 수 있는 곳) (placed : xy에 돌이 두어져 있나, 안 두어져 있다면 둬보고 검사)
+def num_Four(whose_turn, size, board, x, y, placed):
     four = 0
-    
+    if not placed: board[y][x] = whose_turn # 돌 두어보기
+
     # ㅡ 가로 4 검사
-    one_pass = False # 열린 4는 두번 세지기 때문에 한 번 패스
-    for x_r in range(x-4, x+1, +1): ### x(y) -> x(y)+1
+    one_pass = False # 열린 4는 두번 세지기 때문에 연속으로 나오면 패스
+    for x_r in range(x-4, x+1, +1): ### x -> x+1
         if x_r > -1 and x_r+4 < size:
             line = board[y, x_r:x_r+5]
 
             if sum(line) == whose_turn*4:
-                if one_pass == False:
+                if one_pass == False and ( 
+                    (x_r-1 > -1 and board[y][x_r-1] != whose_turn) and ### 아직 5가 아니여야 함
+                    (x_r+5 < size and board[y][x_r+5] != whose_turn)):
                     four += 1
                     one_pass = True
             else:
                 one_pass = False
-    
+
     # ㅣ 세로 4 검사
     one_pass = False
     for y_d in range(y-4, y+1, +1):
@@ -137,7 +147,9 @@ def num_Four(whose_turn, size, board, x, y):
             line = board[y_d:y_d+5, x] ### [y, y_d:y_d+5] -> [y_d:y_d+5, x]
 
             if sum(line) == whose_turn*4:
-                if one_pass == False:
+                if one_pass == False and (
+                    (y_d-1 > -1 and board[y_d-1][x] != whose_turn) and 
+                    (y_d+5 < size and board[y_d+5][x] != whose_turn)):
                     four += 1
                     one_pass = True
             else:
@@ -152,10 +164,12 @@ def num_Four(whose_turn, size, board, x, y):
     for i in range(5):
         if x_r > -1 and x_r+4 < size and y_d > -1 and y_d+4 < size:
             for k in range(5):
-                line[k] = board[y_d+k, x_r+k]
+                line[k] = board[y_d+k][x_r+k]
 
             if sum(line) == whose_turn*4: ### line.sum() -> sum(line)
-                if one_pass == False:
+                if one_pass == False and (
+                    (x_r-1 > -1 and y_d-1 > -1 and board[y_d-1][x_r-1] != whose_turn) and 
+                    (x_r+5 < size and y_d+5 < size and board[y_d+5][x_r+5] != whose_turn)):
                     four += 1
                     one_pass = True
             else:
@@ -171,10 +185,12 @@ def num_Four(whose_turn, size, board, x, y):
     for i in range(5):
         if x_r > -1 and x_r+4 < size and y_u < size and y_u-4 > -1: ### (y_u < size), (y_u+4 > -1) <-> (y_u < -1) and (y_u+4 > size) 
             for k in range(5):
-                line[k] = board[y_u-k, x_r+k]
+                line[k] = board[y_u-k][x_r+k]
 
             if sum(line) == whose_turn*4:
-                if one_pass == False:
+                if one_pass == False and (
+                    (x_r-1 > -1 and y_u+1 < size and board[y_u+1][x_r-1] != whose_turn) and 
+                    (x_r+5 < size and y_u-5 > -1 and board[y_u-5][x_r+5] != whose_turn)):
                     four += 1
                     one_pass = True
             else:
@@ -182,32 +198,35 @@ def num_Four(whose_turn, size, board, x, y):
         
         x_r += 1
         y_u -= 1
-        
+
+    if not placed: board[y][x] = 0 # 돌 원상태로
     return four
 
-# 3-3 금수 판정
-def num_Three(whose_turn, size, board, x, y):
+# 3 개수 (3: 다음 차례에 열린 4를 만들 수 있는 곳)
+def num_Three(whose_turn, size, board, x, y, placed):
     three = 0
-    
+    if not placed: board[y][x] = whose_turn
+
     # ㅡ 가로 3 검사
     for x_r in range(x-3, x+1, +1): ### x -> x+1
         if x_r > -1 and x_r+3 < size:
             line = board[y, x_r:x_r+4]
             # 범위 4칸 중 3칸에 돌이 있을 때
             if sum(line) == whose_turn*3:
-                if (x_r-1 > -1) and (x_r+4 < size): # 바둑판 벗어나서 오류나는거 방지
-                    # 4칸 양쪽이 열려 있고, 4-3이나 거짓금수가 아니면 3 한번 세기
-                    if (board[y, x_r-1] == 0) and (board[y, x_r+4] == 0):
-                        if (whose_turn == 1) and (x_r-2 > -1) and (x_r+5 < size):
-                            if (board[y, x_r-2]==whose_turn) or (board[y, x_r+5]==whose_turn):
-                                continue
-                            if (board[y, x_r]==0) and (board[y, x_r-2]==whose_turn) and (board[y, x_r+5]==whose_turn*-1):
-                                continue
-                            if (board[y, x_r+3]==0) and (board[y, x_r-2]==whose_turn*-1) and (board[y, x_r+5]==whose_turn):
-                                continue
+                if (x_r-1 > -1) and (x_r+4 < size):
+                    # 4칸 양쪽이 열려 있고, 거짓금수가 아니면 3 한번 세기
+                    if (board[y][x_r-1] == 0) and (board[y][x_r+4] == 0):
+                        if (whose_turn == 1) and (x_r-2 > -1) and (x_r+5 < size): # 🟨,⬛ = x_r
+                            if ((board[y][x_r-2]==whose_turn) and (x_r+6 < size) and (board[y][x_r+6]==whose_turn) or # ⚫🟡(🟨⚫⚫⚫)🟡🟡⚫
+                                (board[y][x_r+5]==whose_turn) and (x_r-3 > -1) and (board[y][x_r-3]==whose_turn)):    # ⚫🟡🟡(⬛⚫⚫🟡)🟡⚫
+                                continue # 양방향 장목
+                            if (board[y][x_r]==0) and (board[y][x_r-2]==whose_turn) and (board[y][x_r+5]==whose_turn*-1):
+                                continue # 한방향 장목 # ⚫🟡(🟨⚫⚫⚫)🟡⚪
+                            if (board[y][x_r+3]==0) and (board[y][x_r-2]==whose_turn*-1) and (board[y][x_r+5]==whose_turn):
+                                continue # 한방향 장목 # ⚪🟡(⬛⚫⚫🟡)🟡⚫
                         three += 1
                         break # 열린 3은 두번 세지기 때문에 라인 당 한번만 세기
-    
+
     # ㅣ 세로 3 검사
     for y_d in range(y-3, y+1, +1):
         if y_d > -1 and y_d+3 < size:
@@ -216,13 +235,14 @@ def num_Three(whose_turn, size, board, x, y):
             if sum(line) == whose_turn*3:
                 if (y_d-1 > -1) and (y_d+4 < size):
 
-                    if (board[y_d-1, x] == 0) and (board[y_d+4, x] == 0):
+                    if (board[y_d-1][x] == 0) and (board[y_d+4][x] == 0):
                         if (whose_turn == 1) and (y_d-2 > -1 and y_d+5 < size):
-                            if (board[y_d-2, x]==whose_turn) or (board[y_d+5, x]==whose_turn):
+                            if ((board[y_d-2][x]==whose_turn) and (y_d+6 < size) and (board[y_d+6][x]==whose_turn) or
+                                (board[y_d+5][x]==whose_turn) and (y_d-3 > -1) and (board[y_d-3][x]==whose_turn)):
                                 continue
-                            if (board[y_d, x]==0) and (board[y_d-2, x]==whose_turn) and (board[y_d+5, x]==whose_turn*-1): 
+                            if (board[y_d][x]==0) and (board[y_d-2][x]==whose_turn) and (board[y_d+5][x]==whose_turn*-1): 
                                 continue
-                            if (board[y_d+3, x]==0) and (board[y_d-2, x]==whose_turn*-1) and (board[y_d+5, x]==whose_turn):
+                            if (board[y_d+3][x]==0) and (board[y_d-2][x]==whose_turn*-1) and (board[y_d+5][x]==whose_turn):
                                 continue
                         three += 1
                         break
@@ -235,18 +255,19 @@ def num_Three(whose_turn, size, board, x, y):
     for i in range(4):
         if x_r > -1 and x_r+3 < size and y_d > -1 and y_d+3 < size:
             for k in range(4):
-                line[k] = board[y_d+k, x_r+k]
+                line[k] = board[y_d+k][x_r+k]
 
             if sum(line) == whose_turn*3:
                 if (x_r-1 > -1) and (y_d-1 > -1) and (x_r+4 < size) and (y_d+4 < size):
                     
-                    if (board[y_d-1, x_r] == 0) and (board[y_d+4, x_r] == 0):
+                    if (board[y_d-1][x_r] == 0) and (board[y_d+4][x_r] == 0):
                         if (whose_turn == 1) and (x_r-2 > -1) and (y_d-2 > -1) and (x_r+5 < size) and (y_d+5 < size):
-                            if (board[y_d-2, x_r-2]==whose_turn) or (board[y_d+5, x_r+5]==whose_turn):
+                            if ((board[y_d-2][x_r-2]==whose_turn) and (x_r+6 < size) and (y_d+6 < size) and (board[y_d+6][x_r+6]==whose_turn) or
+                                (board[y_d+5][x_r+5]==whose_turn) and (x_r-3 > -1) and (y_d-3 > -1) and (board[y_d-3][x_r-3]==whose_turn)):
                                 continue
-                            if (board[y_d, x_r]==0) and (board[y_d-2, x_r-2]==whose_turn) and (board[y_d+5, x_r+5]==whose_turn*-1): 
+                            if (board[y_d][x_r]==0) and (board[y_d-2][x_r-2]==whose_turn) and (board[y_d+5][x_r+5]==whose_turn*-1): 
                                 continue
-                            if (board[y_d+3, x_r+3]==0) and (board[y_d-2, x_r-2]==whose_turn*-1) and (board[y_d+5, x_r+5]==whose_turn):
+                            if (board[y_d+3][x_r+3]==0) and (board[y_d-2][x_r-2]==whose_turn*-1) and (board[y_d+5][x_r+5]==whose_turn):
                                 continue
                         three += 1
                         break
@@ -259,42 +280,49 @@ def num_Three(whose_turn, size, board, x, y):
     for i in range(4):
         if x_r > -1 and x_r+3 < size and y_u+1 < size and y_u-3 > -1: ### (y_u-1 > -1), (y_u+3 < size) -> (y_u+1 < size), (y_u-3 > -1)
             for k in range(4):
-                line[k] = board[y_u-k, x_r+k]
+                line[k] = board[y_u-k][x_r+k]
 
             if sum(line) == whose_turn*3:
                 if (x_r-1 > -1) and (x_r+4 < size) and (y_u+1 < size) and (y_u-4 > -1): ### y_u-1, y_u+4 -> y_u+1, y_u-4
                     
-                    if (board[y_u+1, x_r-1] == 0) and (board[y_u-4, x_r+4] == 0):
+                    if (board[y_u+1][x_r-1] == 0) and (board[y_u-4][x_r+4] == 0):
                         if (whose_turn == 1) and (x_r-2 > -1) and (y_u+2 < size) and (x_r+5 < size) and (y_u-5 > -1):
-                            if (board[y_u+2, x_r-2]==whose_turn) or (board[y_u-5, x_r+5]==whose_turn):
+                            if ((board[y_u+2][x_r-2]==whose_turn) and (x_r+6 < size) and (y_u-6 > -1) and (board[y_u-6][x_r+6]==whose_turn) or
+                                (board[y_u-5][x_r+5]==whose_turn) and (x_r-3 > -1) and (y_u+3 < size) and (board[y_u+3][x_r-3]==whose_turn)):
                                 continue
-                            if (board[y_u, x_r]==0) and (board[y_u+2, x_r-2]==whose_turn) and (board[y_u-5, x_r+5]==whose_turn*-1): 
+                            if (board[y_u][x_r]==0) and (board[y_u+2][x_r-2]==whose_turn) and (board[y_u-5][x_r+5]==whose_turn*-1): 
                                 continue
-                            if (board[y_u-3, x_r+3]==0) and (board[y_u+2, x_r-2]==whose_turn*-1) and (board[y_u-5, x_r+5]==whose_turn):
+                            if (board[y_u-3][x_r+3]==0) and (board[y_u+2][x_r-2]==whose_turn*-1) and (board[y_u-5][x_r+5]==whose_turn):
                                 continue
                         three += 1
                         break
         x_r += 1
         y_u -= 1
 
+    if not placed: board[y][x] = 0
     return three
 
 ################################################################ AI code1 (무조건 둬야하는 수 찾기)
 
-# 5목 만드는 좌표가 있으면 줌 (백 전용(금수무시), 범위: 바둑판 전체)
-def canFive(whose_turn, size, board):
-
+# 5목 만드는 좌표가 있으면 줌 (흑 차례고 금수일 땐 주지 않음, 범위: 바둑판 전체)
+def canFive(whose_think, whose_turn, size, board):
+    
     # 가로 감지
     for y in range(size):
         for x in range(size - 4):
             # 연속된 5칸을 잡아 그 중 4칸이 자기 돌로 차 있으면
             line = board[y, x:x+5]
             if sum(line) == whose_turn * 4:
-                # 나머지 한 칸 반환
+                #  흑 금수는 제외하고, 나머지 한 칸 반환
                 for i in range(5):
-                    if board[y, x+i] == 0:
+                    if board[y][x+i] == 0:
+                        if (whose_think == 1) and ( ### 먼저 빈자리를 찾고, 그곳을 검사해야 함
+                            isFive(whose_think, size, board, x+i, y, placed=False) == None or ### 백이 둘 때, 흑 장목검사는 다른 라인들을 해야 함
+                            num_Four(whose_think, size, board, x+i, y, placed=False) >= 2 or ### x -> x+i
+                            num_Three(whose_think, size, board, x+i, y, placed=False) >= 2):
+                            continue
                         return [y, x+i]
-    
+
     # 세로 감지
     for y in range(size - 4):
         for x in range(size):
@@ -303,39 +331,51 @@ def canFive(whose_turn, size, board):
             if sum(line) == whose_turn * 4:
 
                 for i in range(5):
-                    if board[y+i, x] == 0:
+                    if board[y+i][x] == 0:
+                        if (whose_think == 1) and (
+                            isFive(whose_think, size, board, x, y+i, placed=False) == None or
+                            num_Four(whose_think, size, board, x, y+i, placed=False) >= 2 or
+                            num_Three(whose_think, size, board, x, y+i, placed=False) >= 2):
+                            continue
                         return [y+i, x]
     
     # 대각선 감지
     line = [0, 0, 0, 0, 0] # 대각선 감지할 때 이용
     for y in range(size - 4):
         for x in range(size - 4):
+
             # \ 검사
-            line[0] = board[y+0, x+0]
-            line[1] = board[y+1, x+1]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+3]
-            line[4] = board[y+4, x+4]
-
+            for i in range(5):
+                line[i] = board[y+i][x+i]
             if sum(line) == whose_turn * 4:
+
                 for i in range(5):
-                    if board[y+i, x+i] == 0:
+                    if board[y+i][x+i] == 0:
+                        if (whose_think == 1) and (
+                            isFive(whose_think, size, board, x+i, y+i, placed=False) == None or
+                            num_Four(whose_think, size, board, x+i, y+i, placed=False) >= 2 or
+                            num_Three(whose_think, size, board, x+i, y+i, placed=False) >= 2):
+                            continue
                         return [y+i, x+i]
-            # / 검사
-            line[0] = board[y+0, x+4]
-            line[1] = board[y+1, x+3]
-            line[2] = board[y+2, x+2]
-            line[3] = board[y+3, x+1]
-            line[4] = board[y+4, x+0]
 
+            # / 검사
+            for i in range(5):
+                line[i] = board[y+4-i][x+i]
             if sum(line) == whose_turn * 4:
+
                 for i in range(5):
-                    if board[y+i, x+4-i] == 0:
-                        return [y+i, x+4-i]
+                    if board[y+4-i][x+i] == 0:
+                        if (whose_think == 1) and (
+                            isFive(whose_think, size, board, x+i, y+4-i, placed=False) == None or
+                            num_Four(whose_think, size, board, x+i, y+4-i, placed=False) >= 2 or
+                            num_Three(whose_think, size, board, x+i, y+4-i, placed=False) >= 2):
+                            continue
+                        return [y+4-i, x+i]
+    
     return [None]
 
-# 열린 4목 만드는 좌표가 있으면 줌 (백 전용(금수무시), 범위: 바둑판 전체)
-def canFour(whose_turn, size, board):
+# 열린 4목 만드는 좌표가 있으면 줌 (흑 차례고 금수일 땐 주지 않음, 범위: 바둑판 전체)
+def canFour(whose_think, whose_turn, size, board):
 
     canFour_xy_list = []
 
@@ -347,10 +387,15 @@ def canFour(whose_turn, size, board):
             if sum(line) == whose_turn * 3:
                 # 나머지 한 칸을 채웠을 때 열린 4가 되면
                 if x-1 > -1 and x+4 < size:
-                    if board[y, x-1] == 0 and board[y, x+4] == 0:
-                        # 나머지 한 칸 반환
+                    if board[y][x-1] == 0 and board[y][x+4] == 0:
+                        # 흑 금수는 제외하고, 나머지 한 칸 반환
                         for i in range(4):
-                            if board[y, x+i] == 0:
+                            if board[y][x+i] == 0:
+                                if (whose_think == 1) and (
+                                    isFive(whose_think, size, board, x+i, y, placed=False) == None or
+                                    num_Four(whose_think, size, board, x+i, y, placed=False) >= 2 or ### x -> x+i
+                                    num_Three(whose_think, size, board, x+i, y, placed=False) >= 2):
+                                    continue
                                 canFour_xy_list.append([x+i, y])
     
     if len(canFour_xy_list) == 2: # 같은 라인에서 4칸 차이나는 두 좌표가 생기면 바로 반환
@@ -365,10 +410,15 @@ def canFour(whose_turn, size, board):
             if sum(line) == whose_turn * 3:
 
                 if y-1 > -1 and y+4 < size:
-                    if board[y-1, x] == 0 and board[y+4, x] == 0:
+                    if board[y-1][x] == 0 and board[y+4][x] == 0:
 
                         for i in range(4):
-                            if board[y+i, x] == 0:
+                            if board[y+i][x] == 0:
+                                if (whose_think == 1) and (
+                                    isFive(whose_think, size, board, x, y+i, placed=False) == None or
+                                    num_Four(whose_think, size, board, x, y+i, placed=False) >= 2 or
+                                    num_Three(whose_think, size, board, x, y+i, placed=False) >= 2):
+                                    continue
                                 canFour_xy_list.append([x, y+i])
     
     if len(canFour_xy_list) == horizontal_four_num + 2:
@@ -381,14 +431,19 @@ def canFour(whose_turn, size, board):
         for x in range(size - 3):
             
             for i in range(4):
-                line[i] = board[y+i, x+i]
+                line[i] = board[y+i][x+i]
             if sum(line) == whose_turn * 3:
 
                 if x-1 > -1 and x+4 < size and y-1 > -1 and y+4 < size:
-                    if board[y-1, x-1] == 0 and board[y+4, x+4] == 0:
+                    if board[y-1][x-1] == 0 and board[y+4][x+4] == 0:
 
                         for k in range(4):
-                            if board[y+k, x+k] == 0:
+                            if board[y+k][x+k] == 0:
+                                if (whose_think == 1) and (
+                                    isFive(whose_think, size, board, x+i, y+i, placed=False) == None or
+                                    num_Four(whose_think, size, board, x+i, y+i, placed=False) >= 2 or
+                                    num_Three(whose_think, size, board, x+i, y+i, placed=False) >= 2):
+                                    continue
                                 canFour_xy_list.append([x+k, y+k])
     
     if len(canFour_xy_list) == vertical_four_num + 2:
@@ -400,328 +455,57 @@ def canFour(whose_turn, size, board):
         for x in range(size - 3):        
         
             for i in range(4):
-                line[i] = board[y+i, x+3-i]
+                line[i] = board[y+i][x+3-i]
             if sum(line) == whose_turn * 3: ### 4 -> 3 복붙
 
                 if x+3+1 < size and x+3-4 > -1 and y-1 > -1 and y+4 < size: ### x+1 > size -> x+1 < size
-                    if board[y-1, x+3+1] == 0 and board[y+4, x+3-4] == 0: ### x+1, x-4 -> x+3+1, x+3-4 (현재 x의 +3이 기준)
+                    if board[y-1][x+3+1] == 0 and board[y+4][x+3-4] == 0: ### x+1, x-4 -> x+3+1, x+3-4 (현재 x의 +3이 기준)
                         
                         for k in range(4):
-                            if board[y+k, x+3-k] == 0:
+                            if board[y+k][x+3-k] == 0:
+                                if (whose_think == 1) and (
+                                    isFive(whose_think, size, board, x+i, y+4-i, placed=False) == None or
+                                    num_Four(whose_think, size, board, x+i, y+4-i, placed=False) >= 2 or
+                                    num_Three(whose_think, size, board, x+i, y+4-i, placed=False) >= 2):
+                                    continue
                                 canFour_xy_list.append([x+3-k, y+k])
     
     if len(canFour_xy_list) == diagonal_four_num1 + 2:
-        print(canFour_xy_list[-2:])
         return canFour_xy_list[-2:]
     
     if len(canFour_xy_list) == 0:
         canFour_xy_list.append(None)
     return canFour_xy_list
 
-# 연결된 N목 판정 (백 전용(금수무시), 범위: 바둑판 전체)
-def is_n_mok(n_mok, whose_turn, size, board):
+################################################################ AI code2 (각 좌표의 가치 보드 만들기)
 
-    # 가로
-    for y in range(size):
-        for x in range(size - 4):
-
-            line = board[y, x:x+n_mok]
-            if sum(line) == whose_turn * n_mok:
-                return True
-
-    # 세로
-    for y in range(size - 4):
-        for x in range(size):
-
-            line = board[y:y+n_mok, x]
-            if sum(line) == whose_turn * n_mok:
-                return True
-
-    # 대각선
-    line = [0, 0, 0, 0, 0] # 대각선 검사할 때 이용
-    for y in range(size - 4):
-        for x in range(size - 4):
-
-            # \ 검사
-            for i in range(n_mok):
-                line[i] = board[y+i, x+i]
-            if sum(line) == whose_turn * n_mok:
-                return True
-
-            # / 검사
-            for i in range(n_mok):
-                line[i] = board[y+i, x+(n_mok-1)-i]
-            if sum(line) == whose_turn * n_mok:
-                return True
-
-    return False
-
-################################################ AI code2 (각 좌표의 가치 보드 만들기)
-
-num_round = 0 # 연결 기대점수 정확도 (소수 n째 자리까지 반올림) @@ 주의!: 반올림해서 0이 나오면 value_board에서 돌로 인식 @@
-
-# 각 좌표의 연결 기대점수 보드를 줌 # 구 버전
-def win_value_board(size, board):
-    
-    value_board = np.zeros([size, size])
-    
-    # 기대점수 계산 인자 (좌표 주변의 상태)
-    start_value = 1 # 초기 점수
-    next_to_value = 2 # 주변 돌의 영향력 ⚪⚪
-    blank_value = 1.25 # 주변 돌까지의 공백의 영향력 ⚪🟡⚪ (각 라인의 기댓값을 곱한다면 1.25, 더한다면 1.8)
-    blank_bfcls_value = 2 # 주변 돌 너머 막히기 전까지 공백의 영향력 ⚪🟡⚪🟡⚫ # bfcls : blank before close
-    #++ 추가 필요? : 주변 돌이 아군인지 적군인지 -> 현재 턴과 상관없이 바둑판의 상태만 봐야함?
-    
-    for focus_y in range(size):
-        for focus_x in range(size):
-            
-            # 자리가 비어있을 때만 계산하고 채워져있으면 0점
-            if board[focus_y, focus_x] == 0:
-                
-                # 금수 자리면 -1점
-                board[focus_y, focus_x] = 1 ### x, y -> y, x board에선 바뀜
-                if num_Four(1, size, board, focus_x, focus_y) >= 2:
-                    value_board[focus_y, focus_x] = -1
-                    board[focus_y, focus_x] = 0 ### continue 전에도 바둑돌을 다시 물러야 함
-                    continue
-                if num_Three(1, size, board, focus_x, focus_y) >= 2:
-                    value_board[focus_y, focus_x] = -1
-                    board[focus_y, focus_x] = 0
-                    continue
-                if isFive(1, size, board, focus_x, focus_y) == None: 
-                    value_board[focus_y, focus_x] = -1
-                    board[focus_y, focus_x] = 0
-                    continue
-                board[focus_y, focus_x] = 0
-                
-                value = 0 # 가로, 세로, 양 대각선 연결 기대점수의 총합
-                
-                # 가로 ㅡ쪽 점수
-                horizontal_value = start_value # 가로 방향 점수
-                blank1, blank2 = 0, 0 # 처음 만난 돌까지의 공백 수 (좌우 각각)
-                next_to_color = None # 처음 만난 색깔 (좌1, 우1, 좌2, 우2,...)
-                find_stone1, find_stone2 = False, False # 바둑판 끝에 도달하기 전 돌을 만났는지 여부 (좌우 각각)
-                blank_before_close1, blank_before_close2 = 0, 0 # 처음 만난 돌 색깔 기준 그 너머 상대 색깔로 막힌 곳까지의 공백 (좌우 각각)
-                close1, close2 = False, False # 좌우 막혔는지 여부
-                for i in range(1, 5): # 좌우 4칸 감지
-                    if (focus_x-i > -1) and not close1:
-                        if next_to_color == None and board[focus_y, focus_x-i] != 0:
-                            next_to_color = board[focus_y, focus_x-i]
-                            find_stone1 = True
-                        if board[focus_y, focus_x-i] == 0:
-                            if next_to_color == None: # 밑 코드에서 오류 -> 모두 elif로 -> 그 아래코드로 못 감 -> 0일때 조건문 안에서(근본)
-                                blank1 += 1 # 돌이 멀리 떨어져 있을수록 기대점수가 줄음
-                            else:
-                                blank_before_close1 += 1
-                        elif board[focus_y, focus_x-i] == next_to_color:
-                            horizontal_value *= next_to_value/(blank_value**blank1) # 내 돌은 멀어질수록 덜 좋음
-                        else:
-                            close1 = True
-                    else:
-                        if not find_stone1: ### next_to_color로 검사하면 반대쪽 방향에선 돌을 만나지 않아도 통과할 수도 있음
-                            blank_before_close1 = blank1
-                        close1 = True
-                    
-                    if (focus_x+i < size) and not close2: # 반대 방향으로도 검사
-                        if next_to_color == None and board[focus_y, focus_x+i] != 0:
-                            next_to_color = board[focus_y, focus_x+i]
-                            find_stone2 = True            
-                        if board[focus_y, focus_x+i] == 0:
-                            if next_to_color == None:
-                                blank2 += 1
-                            else:
-                                blank_before_close2 += 1
-                        elif board[focus_y, focus_x+i] == next_to_color:
-                            horizontal_value *= next_to_value/(blank_value**blank2)
-                        else:
-                            close2 = True
-                    else:
-                        if not find_stone2:
-                            blank_before_close2 = blank2
-                        close2 = True
-                
-                half_horizontal_value = horizontal_value/2 ### (총 가로 점수 / 2)가 변하지 않도록 따로 만들어줌
-                if close1: horizontal_value -= (half_horizontal_value/(blank_bfcls_value**blank_before_close1)) ### (()
-                if close2: horizontal_value -= (half_horizontal_value/(blank_bfcls_value**blank_before_close2))
-                
-                # 세로 ㅣ쪽 점수
-                vertical_value = start_value
-                blank1, blank2 = 0, 0
-                next_to_color = None
-                find_stone1, find_stone2 = False, False
-                blank_before_close1, blank_before_close2 = 0, 0
-                close1, close2 = False, False
-                for i in range(1, 5):
-                    if (focus_y-i > -1) and not close1:
-                        if next_to_color == None and board[focus_y-i, focus_x] != 0:
-                            next_to_color = board[focus_y-i, focus_x]
-                            find_stone1 = True
-                        if board[focus_y-i, focus_x] == 0:
-                            if next_to_color == None:
-                                blank1 += 1
-                            else:
-                                blank_before_close1 += 1
-                        elif board[focus_y-i, focus_x] == next_to_color:
-                            vertical_value *= next_to_value/(blank_value**blank1) ### horizontal -> vertical 복붙
-                        else:
-                            close1 = True
-                    else:
-                        if not find_stone1:
-                            blank_before_close1 = blank1
-                        close1 = True
-
-                    if (focus_y+i < size) and not close2:
-                        if next_to_color == None and board[focus_y+i, focus_x] != 0:
-                            next_to_color = board[focus_y+i, focus_x]
-                            find_stone2 = True
-                        if board[focus_y+i, focus_x] == 0:
-                            if next_to_color == None:
-                                blank2 += 1
-                            else:
-                                blank_before_close2 += 1
-                        elif board[focus_y+i, focus_x] == next_to_color:
-                            vertical_value *= next_to_value/(blank_value**blank2)
-                        else:
-                            close2 = True
-                    else:
-                        if not find_stone2:
-                            blank_before_close2 = blank2
-                        close2 = True
-                
-                half_vertical_value = vertical_value/2
-                if close1: vertical_value -= (half_vertical_value/(blank_bfcls_value**blank_before_close1))
-                if close2: vertical_value -= (half_vertical_value/(blank_bfcls_value**blank_before_close2))
-                
-                # 대각선 \쪽 점수
-                diagonal_value1 = start_value
-                blank1, blank2 = 0, 0
-                next_to_color = None
-                find_stone1, find_stone2 = False, False
-                blank_before_close1, blank_before_close2 = 0, 0
-                close1, close2 = False, False
-                for i in range(1, 5):
-                    if (focus_x-i > -1) and (focus_y-i > -1) and not close1:
-                        if next_to_color == None and board[focus_y-i, focus_x-i] != 0:
-                            next_to_color = board[focus_y-i, focus_x-i]
-                            find_stone1 = True            
-                        if board[focus_y-i, focus_x-i] == 0:
-                            if next_to_color == None:
-                                blank1 += 1
-                            else:
-                                blank_before_close1 += 1
-                        elif board[focus_y-i, focus_x-i] == next_to_color:
-                            diagonal_value1 *= next_to_value/(blank_value**blank1)
-                        else:
-                            close1 = True
-                    else:
-                        if not find_stone1:
-                            blank_before_close1 = blank1
-                        close1 = True
-                
-                    if (focus_x+i < size) and (focus_y+i < size) and not close2:
-                        if next_to_color == None and board[focus_y+i, focus_x+i] != 0:
-                            next_to_color = board[focus_y+i, focus_x+i]
-                            find_stone2 = True            
-                        if board[focus_y+i, focus_x+i] == 0:
-                            if next_to_color == None:
-                                blank2 += 1
-                            else:
-                                blank_before_close2 += 1
-                        elif board[focus_y+i, focus_x+i] == next_to_color:
-                            diagonal_value1 *= next_to_value/(blank_value**blank2)
-                        else:
-                            close2 = True
-                    else:
-                        if not find_stone2:
-                            blank_before_close2 = blank2
-                        close2 = True
-                
-                half_diagonal_value1 = diagonal_value1/2
-                if close1: diagonal_value1 -= (half_diagonal_value1/(blank_bfcls_value**blank_before_close1))
-                if close2: diagonal_value1 -= (half_diagonal_value1/(blank_bfcls_value**blank_before_close2))
-                
-                # 대각선 /쪽 점수
-                diagonal_value2 = start_value
-                blank1, blank2 = 0, 0
-                next_to_color = None
-                find_stone1, find_stone2 = False, False
-                blank_before_close1, blank_before_close2 = 0, 0
-                close1, close2 = False, False
-                for i in range(1, 5):
-                    if (focus_x-i > -1) and (focus_y+i < size) and not close1:
-                        if next_to_color == None and board[focus_y+i, focus_x-i] != 0:
-                            next_to_color = board[focus_y+i, focus_x-i]
-                            find_stone1 = True            
-                        if board[focus_y+i, focus_x-i] == 0:
-                            if next_to_color == None:
-                                blank1 += 1
-                            else:
-                                blank_before_close1 += 1
-                        elif board[focus_y+i, focus_x-i] == next_to_color:
-                            diagonal_value2 *= next_to_value/(blank_value**blank1)
-                        else:
-                            close1 = True
-                    else:
-                        if not find_stone1:
-                            blank_before_close1 = blank1
-                        close1 = True
-                
-                    if (focus_x+i < size) and (focus_y-i > -1) and not close2:
-                        if next_to_color == None and board[focus_y-i, focus_x+i] != 0:
-                            next_to_color = board[focus_y-i, focus_x+i]
-                            find_stone2 = True
-                        if board[focus_y-i, focus_x+i] == 0:
-                            if next_to_color == None:
-                                blank2 += 1
-                            else:
-                                blank_before_close2 += 1
-                        elif board[focus_y-i, focus_x+i] == next_to_color:
-                            diagonal_value2 *= next_to_value/(blank_value**blank2)
-                        else:
-                            close2 = True
-                    else:
-                        if not find_stone2:
-                            blank_before_close2 = blank2
-                        close2 = True
-                
-                half_diagonal_value2 = diagonal_value2/2
-                if close1: diagonal_value2 -= (half_diagonal_value2/(blank_bfcls_value**blank_before_close1))
-                if close2: diagonal_value2 -= (half_diagonal_value2/(blank_bfcls_value**blank_before_close2))
-                
-                # 각 자리마다 연결 기대점수를 저장
-                value = (horizontal_value * vertical_value * diagonal_value1 * diagonal_value2)
-                value_board[focus_y, focus_x] = round(value, num_round)
-                value = 0 ### 초기화
-    
-    return value_board
-    
-# 각 좌표의 가치를 보드로 줌 (현재 보드의 상태 뿐만 아니라, 각 좌표마다 돌을 뒀다 가정하고도 계산 가능)
+# 각 좌표의 가치를 보드로 줌 (현재 보드의 상태 뿐만 아니라, 각 좌표마다 돌을 뒀다 가정하고도 계산 가능) (placed : 돌을 두기 전/후 구별)
 def whose_score_board(whose_turn, size, board, placed):
     
     whose_omok_score_board = np.zeros([size, size])
-    mok_value = 1.2 # 1목 당 제곱할 인자
+    mok_value_1_2 = 1.2 # 1목 당 제곱할 인자
     
     for y in range(size):
         for x in range(size):
             # 돌이 이미 놓인 자리는 0점
-            if board[y, x] != 0:
+            if board[y][x] != 0:
                 continue
             # 각 좌표에 돌을 놓아볼 때 금수 검사
             if placed:
-                board[y, x] = whose_turn ### == -> =
+                board[y][x] = whose_turn ### == -> =
 
-                # 흑 금수 자리면 -1점
-                if num_Four(1, size, board, x, y) >= 2:
-                    value_board[y, x] = -1
-                    board[y, x] = 0 ### continue 전에도 바둑돌을 다시 물러야 함
+                # 흑 금수 자리면 -2점 #** -1점으로 했더니 16진수로 표기될 때 있음
+                if num_Four(1, size, board, x, y, placed=True) >= 2:
+                    whose_omok_score_board[y][x] = -2
+                    board[y][x] = 0 ### continue 전에도 바둑돌을 다시 물러야 함
                     continue
-                if num_Three(1, size, board, x, y) >= 2:
-                    value_board[y, x] = -1
-                    board[y, x] = 0
+                if num_Three(1, size, board, x, y, placed=True) >= 2:
+                    whose_omok_score_board[y][x] = -2
+                    board[y][x] = 0
                     continue
-                if isFive(1, size, board, x, y) == None: 
-                    value_board[y, x] = -1
-                    board[y, x] = 0
+                if isFive(1, size, board, x, y, placed=True) == None: 
+                    whose_omok_score_board[y][x] = -2
+                    board[y][x] = 0
                     continue
 
             value = 1
@@ -741,7 +525,7 @@ def whose_score_board(whose_turn, size, board, placed):
                             n_mok += 1
                     # 돌의 개수에 따라 일정 점수를 더함
                     if not block:
-                        value *= mok_value**(n_mok) # 2**(-5+n_mok)*100 # 2**(n_mok)
+                        value *= mok_value_1_2**n_mok # 2**(-5+n_mok)*100 # 2**(n_mok)
                     # if x == 8 and y == 7: print(2**(-5+n_mok)*100, 2)
             
             # ㅣ 세로 검사
@@ -759,7 +543,7 @@ def whose_score_board(whose_turn, size, board, placed):
                             n_mok += 1
                     
                     if not block:
-                        value *= mok_value**(n_mok)
+                        value *= mok_value_1_2**n_mok
                     # if x == 8 and y == 7: print(2**(-5+n_mok)*100, 2)
             line = [0, 0, 0, 0, 0] # 대각선 검사할 때 이용
             
@@ -772,7 +556,7 @@ def whose_score_board(whose_turn, size, board, placed):
                     n_mok = 0
                     
                     for k in range(5):
-                        line[k] = board[y_d+k, x_r+k]
+                        line[k] = board[y_d+k][x_r+k]
                         if line[k] == whose_turn*-1:
                             block = True
                             break
@@ -780,7 +564,7 @@ def whose_score_board(whose_turn, size, board, placed):
                             n_mok += 1
                     
                     if not block:
-                        value *= mok_value**(n_mok)
+                        value *= mok_value_1_2**n_mok
                     # if x == 8 and y == 7: print(2**(-5+n_mok)*100, 3)
                 x_r += 1 ### 점수 좌우 대칭x 이유 ->  else: continue에도 x_r, y_d += 1을 추가해야함, 애초에 continue가 필요 없음
                 y_d += 1
@@ -794,7 +578,7 @@ def whose_score_board(whose_turn, size, board, placed):
                     n_mok = 0
                     
                     for k in range(5):
-                        line[k] = board[y_u-k, x_r+k]
+                        line[k] = board[y_u-k][x_r+k]
                         if line[k] == whose_turn*-1:
                             block = True
                             break
@@ -802,13 +586,13 @@ def whose_score_board(whose_turn, size, board, placed):
                             n_mok += 1
                     
                     if not block:
-                        value *= mok_value**(n_mok)
+                        value *= mok_value_1_2**n_mok
                     # if x == 8 and y == 7: print(2**(-5+n_mok)*100, 4)
                 x_r += 1
                 y_u -= 1
             
-            whose_omok_score_board[y, x] = round(value, 3)
-            board[y, x] = 0
+            whose_omok_score_board[y][x] = round(value, 1)
+            board[y][x] = 0
     
     return whose_omok_score_board
 
@@ -816,19 +600,19 @@ def whose_score_board(whose_turn, size, board, placed):
 def whose_difference_score_board(whose_turn, size, board):
     
     # 돌을 두기 전/후의 점수 보드 만들기
-    score_board_before_placing = whose_score_board(whose_turn, size, board, placed=False) # 현재 상태
-    score_board_after_placing = whose_score_board(whose_turn, size, board, placed=True) # 각 좌표마다 돌을 두어봤을 때 상태
-    # print(score_board_before_placing, "\n")
-    # print(score_board_after_placing, "\n")
-
+    before_placing_score_board = whose_score_board(whose_turn, size, board, placed=False) # 돌을 두기 전
+    after_placing_score_board = whose_score_board(whose_turn, size, board, placed=True) # 돌을 둔 후
+    # print(before_placing_score_board, "\n")
+    # print(after_placing_score_board, "\n")
+    
     # 돌을 두기 전/후의 점수 차이 보드 만들기
     difference_score_board = np.zeros([size, size])
     for y in range(size):
-        for x in range(size):
-            difference_score_board[y, x] = score_board_after_placing[y, x] - score_board_before_placing[y, x]
+        for x in range(size): # 둔 후 가치 - 두기 전 가치
+            difference_score_board[y][x] = after_placing_score_board[y][x] - before_placing_score_board[y][x] 
     return difference_score_board
 
-# 흑/백 양쪽의 가치 변화량 보드를 합산한 보드를 줌 (각 좌표의 최종 가치 보드) # 신 버전
+# 흑/백 양쪽의 가치 변화량 보드를 합산한 보드를 줌 (각 좌표의 최종 가치 보드) # 신 버전 #++ whose_turn 불필요
 def difference_score_board(whose_turn, size, board):
     
     # 각자의 점수 보드 만들기
@@ -844,7 +628,7 @@ def difference_score_board(whose_turn, size, board):
     total_score_board = np.zeros([size, size]) ### np.zeros([size, size], "\n") 이렇게 하면 음수일 때 오류남
     for y in range(size):
         for x in range(size):
-            total_score_board[y, x] = oneself_score_board[y, x] + opponent_score_board[y, x]
+            total_score_board[y][x] = oneself_score_board[y][x] + opponent_score_board[y][x]
     return total_score_board
 
 # 보드에서 제일 높은 점수를 가지는 좌표를 줌
@@ -858,13 +642,13 @@ def xy_most_high_value(size, board, value_board):
         for focus_x in range(size):
             
             # (1위 점수 < 현재 좌표의 점수)일 때, 현재 좌표를 1위로 (1.더 높은 점수)
-            if value_most_high < value_board[focus_y, focus_x]:
+            if value_most_high < value_board[focus_y][focus_x]:
                 
-                value_most_high = value_board[focus_y, focus_x]
+                value_most_high = value_board[focus_y][focus_x]
                 xy_most_high = [[focus_x, focus_y]]
             
             # (1위 점수 = 현재 좌표의 점수)일 때
-            elif value_most_high == value_board[focus_y, focus_x]:
+            elif value_most_high == value_board[focus_y][focus_x]:
                 
                 selected_xy = select_xy_more_close([focus_x, focus_y], xy_most_high[0], board, value_board)
                 
@@ -893,25 +677,24 @@ def xy_most_high_value(size, board, value_board):
     xy_win = xy_most_high[ran_num]
     return [xy_win, xy_most_high]
 
-################################################ AI code3 (두 좌표중 하나를 선택)
+################################################################ AI code3 (상대 3을 막을 때, 두 좌표중 하나를 선택)
 
 # 두 좌표 중 돌들의 평균 위치에 더 가까운 좌표를 내보냄
 def select_xy_more_close(xy1, xy2, board, value_board):
     
-    if forbid_xy1 and forbid_xy2: return None
     sum_x, sum_y = 0, 0 # 모든 돌의 x, y좌표값의 합
     num_stones = 0 # 바둑판에 놓인 돌 개수
     
     for focus2_y in range(size): ### focus -> focus2 새로운 변수
         for focus2_x in range(size):
-            if board[focus2_y, focus2_x] == -1 or board[focus2_y, focus2_x] == 1: 
+            if board[focus2_y][focus2_x] == -1 or board[focus2_y][focus2_x] == 1: 
                 sum_x += focus2_x
                 sum_y += focus2_y
                 num_stones += 1 ### value_board로 돌의 유무를 확인하면 반올림 0이 생겼을 때 돌인줄 알음
     
     if num_stones == 0:
         return 0
-    elif (num_stones == 1 and value_board[7, 7] == 0): ## or num_stones == 3 (돌 두개 막기)
+    elif (num_stones == 1 and value_board[7][7] == 0): ## or num_stones == 3 (돌 두개 막기)
         return 1
     avrg_x, avrg_y = round(sum_x/num_stones, 2), round(sum_y/num_stones, 2) # 전체 바둑돌의 평균 좌표
     
@@ -925,11 +708,9 @@ def select_xy_more_close(xy1, xy2, board, value_board):
 # 두 좌표 중 중앙에 더 가까운 좌표를 내보냄
 def select_xy_more_center(xy1, xy2, value_board):
     
-    if forbid_xy1 and forbid_xy2: return None
-    
-    if (7-xy1[0])**2 + (7-xy1[1])**2 < (7-xy2[0])**2 + (7-xy2[1])**2 and not forbid_xy1:
+    if (7-xy1[0])**2 + (7-xy1[1])**2 < (7-xy2[0])**2 + (7-xy2[1])**2:
         return xy1
-    elif (7-xy1[0])**2 + (7-xy1[1])**2 > (7-xy2[0])**2 + (7-xy2[1])**2 and not forbid_xy2:
+    elif (7-xy1[0])**2 + (7-xy1[1])**2 > (7-xy2[0])**2 + (7-xy2[1])**2:
         return xy2
     else:
         return None
@@ -1004,6 +785,9 @@ six_text = myfont.render('응~ 육목~', True, (255, 0, 0))
 myfont2 = pygame.font.SysFont('배달의민족 한나는열한살', 70)
 foul_lose = myfont2.render('그렇게 두고 싶으면 그냥 둬', True, (255, 0, 0))
 
+myfont3 = pygame.font.SysFont('배달의민족 한나는열한살', 40)
+AI_vs_AI_mode = myfont3.render('AI vs AI 모드', True, (255, 0, 0))
+
 def make_board(board): # 바둑알 표시하기
     for a in range(size):
         for b in range(size):
@@ -1012,8 +796,8 @@ def make_board(board): # 바둑알 표시하기
             if board[a][b]!=0 and board[a][b]==-1:
                 screen.blit(white_stone,(625-18+(b-7)*dis-250,375-19+(a-7)*dis)) ## 18.75 -> 19
                 
-def last_stone(board): # 마지막 돌 위치 표시하기 
-    screen.blit(last_sign1,(625-18+(board[0]-7)*dis-250,375-19+(board[1]-7)*dis)) ## 18.75 -> 19
+def last_stone(xy): # 마지막 돌 위치 표시하기
+    screen.blit(last_sign1,(625-18+(xy[0]-7)*dis-250,375-19+(xy[1]-7)*dis)) ## 18.75 -> 19
 
 ################################################################ main code
 
@@ -1023,23 +807,23 @@ exit=False # 프로그램 종료
 
 while not exit:
     pygame.display.set_caption("오목이 좋아, 볼록이 좋아? 오목!")
-    
+
     whose_turn = 1 # 누구 턴인지 알려줌 (1: 흑, -1: 백)
     turn = 0
     final_turn = None # 승패가 결정난 턴 (수순 다시보기 할 때 활용)
     max_turn = size * size
-    
+
     game_selected = False # 게임 모드를 선택했나?
     select_AI = True # 게임 모드
     AI_vs_AI = False # AI vs AI 모드 #############################################################################
-    
+
     game_end = False # 게임 후 수순 다시보기 모드까지 끝났나?
     black_win = None # 흑,백 승패 여부
     game_over = False # 게임이 끝났나?
     game_review = False # 수순 다시보기 모드인가?
-    
+
     record = [] # 기보 기록할 곳
-    
+
     black_foul = False # 금수를 뒀나?
     before_foul = False # 한 수 전에 금수를 뒀나?
     stubborn_foul = False # 방향키를 움직이지 않고 또 금수를 두었나? (금수자리를 연타했나)
@@ -1047,13 +831,12 @@ while not exit:
     threethree_foul = False
     fourfour_foul = False
     six_foul = False
-    forbid_xy1, forbid_xy2 = False, False
-    
+
     x=7 # 커서 좌표
     y=7
     y_win=375-19 ## 18.75 -> 19 # 커서 실제 위치
     x_win=625-18-250
-    
+
     board = np.zeros([size, size]) # 컴퓨터가 이용할 바둑판
     screen.blit(board_img,(window_num, 0)) # 바둑판 이미지 추가
     screen.blit(play_button,(125, 100))
@@ -1107,24 +890,24 @@ while not exit:
                     screen.blit(board_img,(window_num, 0))
                     screen.blit(select,(x_win,y_win))
                 pygame.display.update()
-    
+
     pygame.mixer.music.play(-1) # -1 : 반복 재생
     print("\n게임 시작!")
     print(difference_score_board(whose_turn, size, board), "\n") #print
     while not game_end:
         screen.blit(board_img,(window_num, 0)) ## screen.fill(0) : 검은 화면
-        
+
         # 입력 받기
         for event in pygame.event.get():
-            
+
             # 창 닫기(X) 버튼을 클릭했을 때
             if event.type == pygame.QUIT:
                 exit=True
                 game_end=True
-            
+
             # 키보드를 누르고 땔 때
             elif event.type == pygame.KEYDOWN:
-                
+
                 # ↑ ↓ → ← 방향키
                 if event.key == pygame.K_UP: 
                     if not game_review:
@@ -1162,7 +945,7 @@ while not exit:
                         turn += 1
                         board[record[turn-1][0], record[turn-1][1]] = record[turn-1][2]
                         last_stone_xy = [record[turn-1][0], record[turn-1][1]]
-                
+
                 # 기타 키
                 elif event.key == pygame.K_F1: # 바둑돌 지우기
                     pygame.mixer.Sound.play(sound3)
@@ -1192,7 +975,7 @@ while not exit:
                 elif event.key == pygame.K_ESCAPE: # 창 닫기
                     exit=True
                     game_end=True
-                
+
                 # Enter, Space 키
                 elif event.key == pygame.K_RETURN and game_over: # 게임 종료
                         game_end=True
@@ -1200,7 +983,7 @@ while not exit:
                 elif event.key == pygame.K_SPACE and game_over: # 금수 연타했을 때 패배 창 제대로 못 보는거 방지
                     continue
                 elif event.key == pygame.K_SPACE and not game_over: # 돌 두기
-                    
+
                     # 플레이어가 두기
                     if AI_vs_AI == False and (not select_AI or whose_turn == 1):
                         
@@ -1217,9 +1000,9 @@ while not exit:
                             board[y][x] = -1
                         
                         # 오목 생겼나 확인
-                        five = isFive(whose_turn, size, board, x, y)
+                        five = isFive(whose_turn, size, board, x, y, placed=True)
                         
-                        # 오목이 생겼으면 게임 종료 신호 키기
+                        # 오목이 생겼으면 게임 종료 신호 키기, 아니면 무르기
                         if five == True:
                             if select_AI:
                                 pygame.display.set_caption("다시봤습니다 휴먼!")
@@ -1230,7 +1013,7 @@ while not exit:
                         
                         # 오목이 아닌데, 흑이면 금수 확인
                         elif whose_turn == 1:
-
+                            
                             # 장목(6목 이상), 3-3, 4-4 금수인지 확인
                             if stubborn_foul or five == None: # black_고집 센 : 금수자리를 연타하는 경우 연산 생략
                                 print("흑은 장목을 둘 수 없음")
@@ -1238,13 +1021,13 @@ while not exit:
                                 screen.blit(six_text,(235, 660))
                                 if before_foul:
                                     foul_n_mok += 1
-                            elif stubborn_foul or num_Four(whose_turn, size, board, x, y) >= 2:
+                            elif stubborn_foul or num_Four(whose_turn, size, board, x, y, placed=True) >= 2:
                                 print("흑은 사사에 둘 수 없음")
                                 black_foul = True
                                 screen.blit(fourfour_text,(235, 660))
                                 if before_foul:
                                     foul_n_mok += 1
-                            elif stubborn_foul or num_Three(whose_turn, size, board, x, y) >= 2:
+                            elif stubborn_foul or num_Three(whose_turn, size, board, x, y, placed=True) >= 2:
                                 print("흑은 삼삼에 둘 수 없음")
                                 black_foul = True
                                 screen.blit(threethree_text,(235, 660))
@@ -1263,7 +1046,7 @@ while not exit:
                                     # 바둑알, 커서 위치 표시, 마지막 돌 표시 화면에 추가
                                     make_board(board)
                                     screen.blit(select,(x_win,y_win))
-                                    last_stone([last_stone_xy[1],last_stone_xy[0]])
+                                    last_stone([last_stone_xy[1], last_stone_xy[0]])
                                     pygame.display.update()
                                     continue
                                 else:
@@ -1275,7 +1058,7 @@ while not exit:
                         
                         # 돌 위치 확정
                         record.append([y, x, whose_turn]) # 기보 기록
-                        last_stone_xy = [y,x] # 마지막 돌 위치 기록
+                        last_stone_xy = [y, x] # 마지막 돌 위치 기록
                         turn += 1 # 턴 추가
                         
                         if whose_turn == 1:
@@ -1306,55 +1089,43 @@ while not exit:
                                 if not black_foul:
                                     print("백 승리!")
                         # print(difference_score_board(whose_turn, size, board), "\n") #print
-                    
+
                     # AI가 두기
                     if AI_vs_AI == True or (AI_vs_AI == False and select_AI and whose_turn == -1) and not game_over:
-                        
+
                         # 무조건 둬야 하는 좌표 감지 (우선순위 1~4위)
-                        self_5_xy = canFive(whose_turn, size, board)         # 1.자신의 5자리
-                        opponent_5_xy = canFive(whose_turn*-1, size, board)  # 2.상대의 5자리
-                        self_4_xys = canFour(whose_turn, size, board)        # 3.자신의 열린4 자리 (최대 2곳)
-                        opponent_4_xys = canFour(whose_turn*-1, size, board) # 4.상대의 열린4 자리 (최대 2곳)
-                        
-                        # 연결 기대점수가 가장 높은 좌표 감지 (우선순위 5위)
-                        value_board = difference_score_board(whose_turn, size, board) ## win_value_board(size, board)
-                        xy_most_high_list = xy_most_high_value(size, board, value_board) # 5.가장 연결 기대점수가 높은 곳
+                        self_5_xy = canFive(whose_turn, whose_turn, size, board)     # 1.자신의 5자리
+                        opon_5_xy = canFive(whose_turn, whose_turn*-1, size, board)  # 2.상대의 5자리
+                        self_4_xys = canFour(whose_turn, whose_turn, size, board)    # 3.자신의 열린4 자리 (최대 2곳)
+                        opon_4_xys = canFour(whose_turn, whose_turn*-1, size, board) # 4.상대의 열린4 자리 (최대 2곳)
+                        print("4", self_5_xy, opon_5_xy, "3", self_4_xys, opon_4_xys)
+                        self_5_xy, opon_5_xy, self_4_xys, opon_4_xys = [None], [None], [None], [None]
+                        # 가장 높은 가치의 좌표 감지
+                        value_board = difference_score_board(whose_turn, size, board)
+                        xy_most_high_list = xy_most_high_value(size, board, value_board)
                         expect_xy = xy_most_high_list[0]
-                        
+
                         # 우선 순위가 가장 높은 좌표를 선택
                         if self_5_xy[0] != None:
                             x, y = self_5_xy[1], self_5_xy[0]
-                        elif opponent_5_xy[0] != None:
-                            x, y = opponent_5_xy[1], opponent_5_xy[0]
+                        elif opon_5_xy[0] != None:
+                            x, y = opon_5_xy[1], opon_5_xy[0]
                         elif self_4_xys[0] != None:
                             
                             x1, y1 = self_4_xys[0][0], self_4_xys[0][1] ### value_board는 [y, x] 형태
 
-                            board[y1, x1] = 1
-                            if (whose_turn == 1 and num_Four(whose_turn, size, board, x1, y1) >= 2):
-                                forbid_xy1 = True
-                            else:
-                                forbid_xy1 = False
-                            board[y1, x1] = 0
-
                             # 떨어진 3일 때
-                            if len(self_4_xys) == 1 and not forbid_xy1:
+                            if len(self_4_xys) == 1:
                                 x, y = x1, y1
                             else: # 열린 3일 때
-                                # 열린 3은 4를 만드는 곳이 2곳임 (두 곳 비교 필요)
+
+                                # 열린 3은 열린 4를 만드는 곳이 2곳임 (비교 필요)
                                 x2, y2 = self_4_xys[1][0], self_4_xys[1][1]
 
-                                board[y1, x1] = 1
-                                if (whose_turn == 1 and num_Four(whose_turn, size, board, x2, y2) < 2):
-                                    forbid_xy2 = True
-                                else: 
-                                    forbid_xy2 = False
-                                board[y1, x1] = 0
-
                                 # 기대 점수가 가장 높은 좌표와 같은 좌표를 선택 # 우선순위 1위
-                                if expect_xy == [x1, y1] and not forbid_xy1:
+                                if expect_xy == [x1, y1]:
                                     x, y = x1, y1
-                                elif expect_xy == [x2, y2] and not forbid_xy2:
+                                elif expect_xy == [x2, y2]:
                                     x, y = x2, y2
                                 else: # 돌들의 평균 위치에 더 가까운 좌표를 선택 (주변에 돌이 더 많은 쪽) # 우선순위 2위
                                     selected_xy = select_xy_more_close([x1, y1], [x2, y2], board, value_board)
@@ -1366,32 +1137,18 @@ while not exit:
                                             x, y = selected_xy[0], selected_xy[1]
                                         else:
                                             x, y = x1, y1
-                        elif opponent_4_xys[0] != None:
+                        elif opon_4_xys[0] != None:
                             
-                            x1, y1 = opponent_4_xys[0][0], opponent_4_xys[0][1]
+                            x1, y1 = opon_4_xys[0][0], opon_4_xys[0][1]
                             
-                            board[y1, x1] = 1
-                            if (whose_turn == 1 and num_Four(whose_turn, size, board, x1, y1) >= 2): 
-                                forbid_xy1 = True
-                            else: 
-                                forbid_xy1 = False
-                            board[y1, x1] = 0
-                            
-                            if len(opponent_4_xys) == 1 and not forbid_xy1: ### white -> black 복붙
+                            if len(opon_4_xys) == 1: ### white -> black 복붙
                                 x, y = x1, y1
                             else:
-                                x2, y2 = opponent_4_xys[1][0], opponent_4_xys[1][1]
-
-                                board[y1, x1] = 1
-                                if (whose_turn == 1 and num_Four(whose_turn, size, board, x2, y2) < 2):
-                                    forbid_xy2 = True
-                                else:
-                                    forbid_xy2 = False
-                                board[y1, x1] = 0
+                                x2, y2 = opon_4_xys[1][0], opon_4_xys[1][1]
                                 
-                                if expect_xy == [x1, y1] and not forbid_xy1:
+                                if expect_xy == [x1, y1]:
                                     x, y = x1, y1
-                                elif expect_xy == [x2, y2] and not forbid_xy2:
+                                elif expect_xy == [x2, y2]:
                                     x, y = x2, y2
                                 else:
                                     selected_xy = select_xy_more_close([x1, y1], [x2, y2], board, value_board)
@@ -1403,57 +1160,121 @@ while not exit:
                                             x, y = selected_xy[0], selected_xy[1]
                                         else:
                                             x, y = x1, y1
-                        else:
-                            board[expect_xy[1], expect_xy[0]] = 1
-                            if (whose_turn == -1) or (isFive(whose_turn, size, board, expect_xy[0], expect_xy[1]) != None and
-                                num_Four(whose_turn, size, board, expect_xy[0], expect_xy[1]) < 2 and
-                                num_Three(whose_turn, size, board, expect_xy[0], expect_xy[1]) < 2):
-                                x, y = expect_xy[0], expect_xy[1]
-                            board[expect_xy[1], expect_xy[0]] = 0
+                        else: # 우선순위 5 ~ 7위
+                            xy_selected = False
 
-                        # print(board[y, x])
-                        if board[y, x] != 0: # 둘 곳이 마땅히 없을 때 빈공간에 두기
-                            print("둘 자리 없음")
-                            for focus3_y in range(size):
-                                for focus3_x in range(size):
-                                    if board[focus3_y][focus3_x] == 0:
-                                        x, y = focus3_x, focus3_y
-                                        break
-                                if (x == focus3_x) and (y == focus3_y): break
-                        
+                            # 5. 4-4, 4-3, 3-3자리 선택 (우선순위 5위) 
+                            for y_a in range(size):
+                                for x_a in range(size):
+                                    
+                                    if board[y_a][x_a] == 0: ### 돌이 이미 두어진 곳은 검사할 필요 없는 데다, 검사 후 돌이 사라짐
+                                        self_4 = num_Four(whose_turn, size, board, x_a, y_a, placed=False) # 자신의 4 개수
+                                        opon_4 = num_Four(whose_turn*-1, size, board, x_a, y_a, placed=False) # 자신의 3 개수
+                                        self_3 = num_Three(whose_turn, size, board, x_a, y_a, placed=False) # 상대의 4 개수
+                                        opon_3 = num_Three(whose_turn*-1, size, board, x_a, y_a, placed=False) # 상대의 3 개수
+                                        # print(isFive(whose_turn, size, board, x_a, y_a, placed=False),
+                                        #     num_Four(whose_turn, size, board, x_a, y_a, placed=False),
+                                        #     num_Three(whose_turn, size, board, x_a, y_a, placed=False))
+                                        # print(x_a+1, y_a+1, self_4, self_3, opon_4, opon_3)
+                                        ### opon_4 <-> self_3, whose_turn*-1 <-> whose_turn 바뀜
+                                        if whose_turn == -1 and self_4 >= 2: # 백의 4-4 공격
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        elif whose_turn*-1 == -1 and opon_4 >= 2 and ( # 흑이 백의 4-4, 방어
+                                            isFive(whose_turn, size, board, x_a, y_a, placed=False) != None and
+                                            num_Four(whose_turn, size, board, x_a, y_a, placed=False) < 2 and
+                                            num_Three(whose_turn, size, board, x_a, y_a, placed=False) < 2):
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        
+                                        elif whose_turn == 1 and self_4 == 1 and self_3 == 1: # 흑의 4-3 공격
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break                                   
+                                        elif whose_turn == -1 and self_4 == 1 and self_3 == 1: # 백의 4-3 공격
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        elif whose_turn*-1 == -1 and opon_4 == 1 and opon_3 == 1 and ( # 흑이 백의 4-3 방어
+                                            isFive(whose_turn, size, board, x_a, y_a, placed=False) != None and
+                                            num_Four(whose_turn, size, board, x_a, y_a, placed=False) < 2 and
+                                            num_Three(whose_turn, size, board, x_a, y_a, placed=False) < 2):
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        elif whose_turn*-1 == 1 and opon_4 == 1 and opon_3 == 1: # 백이 흑의 4-3 방어
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        
+                                        elif whose_turn == -1 and self_3 >= 2: # 백의 3-3 공격
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                        elif whose_turn*-1 == -1 and opon_3 >= 2 and ( # 흑이 백의 3-3 방어 ### self_3 -> opon_3
+                                            isFive(whose_turn, size, board, x_a, y_a, placed=False) != None and
+                                            num_Four(whose_turn, size, board, x_a, y_a, placed=False) < 2 and
+                                            num_Three(whose_turn, size, board, x_a, y_a, placed=False) < 2):
+                                            x, y = x_a, y_a
+                                            xy_selected = True
+                                            break
+                                
+                                if xy_selected: 
+                                    break
+
+                            # 6. 가장 높은 가치를 가진 좌표를 선택 (우선순위 6위)
+                            if not xy_selected and board[expect_xy[1], expect_xy[0]] == 0:
+                                x, y = expect_xy[0], expect_xy[1]
+                                xy_selected = True
+                                # if (whose_turn == -1) or (isFive(whose_turn, size, board, expect_xy[0], expect_xy[1], placed=False) != None and
+                                #     num_Four(whose_turn, size, board, expect_xy[0], expect_xy[1], placed=False) < 2 and
+                                #     num_Three(whose_turn, size, board, expect_xy[0], expect_xy[1], placed=False) < 2):
+                                #     x, y = expect_xy[0], expect_xy[1]
+
+                            # 7. 둘 곳이 마땅히 없을 때 빈공간을 선택 (우선순위 7위)
+                            if not xy_selected:
+                                for y_b in range(size):
+                                    for x_b in range(size):
+                                        if board[y_b][x_b] == 0:
+                                            x, y = x_b, y_b
+                                            xy_selected = True
+                                            break
+                                    if xy_selected: break ### (x == x_b) and (y == y_b) x 맨 오른쪽 끝에선 맞을 수밖에 없음
+
                         # 연결 기대 점수판, 기대점수 1위, 최종 우선순위 1위 좌표 출력
                         print(value_board, "\n")
-                        
+
                         if len(xy_most_high_list[1]) > 1:
                             print("기대점수 공동 1위:", end=" ")
                             for xy in xy_most_high_list[1]:
                                 print("["+str(xy[0]+1) +","+ str(xy[1]+1)+"]", end=" ")
                             print("랜덤 뽑기")
-                        
+
                         print("기대점수 1위: x="+str(expect_xy[0]+1) + " y="+str(expect_xy[1]+1), end=", ")
                         print(f"{round(value_board[expect_xy[1], expect_xy[0]], 3)}점")
-                        
                         print("우선순위 1위: x="+str(x+1) + " y="+str(y+1), end=", ")
-                        print(f"{round(value_board[y, x], 3)}점\n")
-                        
-                        # 돌 위치 확정
-                        board[y, x] = whose_turn
-                        
+                        print(f"{round(value_board[y][x], 3)}점\n")
+
+                        # 선택한 좌표에 돌 두기
+                        board[y][x] = whose_turn
+
                         record.append([y, x, whose_turn])
                         last_stone_xy = [y, x]
                         turn += 1
-                        
+
                         x_win = 28 + dis*x # 커서 이동
                         y_win = 27 + dis*y
-                        
+
                         # 오목이 생겼으면 게임 종료 신호 키기
-                        if is_n_mok(5, whose_turn, size, board) == True:
+                        if isFive(whose_turn, size, board, x, y, placed=True) == True:
                             pygame.display.set_caption("나에게 복종하라 인간.")
                             game_over=True
 
                         # 승부가 결정나지 않았으면 턴 교체, 바둑판이 가득 차면 초기화
                         if not game_over:
-                            # time.sleep(0.08) #++ 만들어놓고 왜 만들었는지 까먹음
+                            # time.sleep(0.08) ## 바둑돌 소리 겹치지 않게 -> AI계산 시간이 길어지면서 필요없어짐
                             pygame.mixer.Sound.play(sound2)
                             whose_turn *= -1
 
@@ -1468,22 +1289,24 @@ while not exit:
                             if not black_foul:
                                 print("백 승리!")
                         # print(difference_score_board(whose_turn, size, board), "\n") #print
-                
-                # 바둑알, 커서 위치 표시, 마지막 돌 표시 화면에 추가
+
+                # 바둑알, 커서 위치 표시, 마지막 돌 표시, AI vs AI 모드 화면에 추가
                 if not exit:
                     make_board(board)
                     if not game_review:
                         screen.blit(select,(x_win,y_win))
                     if turn != 0: # or event.key == pygame.K_F2 or event.key == pygame.K_F3
-                        last_stone([last_stone_xy[1],last_stone_xy[0]])
-                
+                        last_stone([last_stone_xy[1], last_stone_xy[0]])
+                    if AI_vs_AI:
+                        screen.blit(AI_vs_AI_mode,(520, 705))
+
                 # 흑,백 승리 이미지 화면에 추가, 수순 다시보기 모드로 전환, 기보 저장
                 if game_over and not game_review:
                     game_review = True
                     final_turn = turn
-                    if black_win: # 흑 승
+                    if black_win: # 흑 승리/백 승리 표시
                         screen.blit(win_black,(0,250))
-                    else: # 백 승
+                    else:
                         screen.blit(win_white,(0,250))
 
                     # 기보 파일로 저장
@@ -1493,7 +1316,7 @@ while not exit:
                             turn_hangul = "흑" if record[i][2] == 1 else "백"
                             file.write(str(record[i][0]+1)+' '+str(record[i][1]+1)+' '+turn_hangul+'\n')
                         file.write("\n")
-                
+
                 # 화면 업데이트
                 pygame.display.update()
                 
